@@ -16,3 +16,4 @@ code = code.replace(/const CSS_RULES = `([\s\S]*?)`;/, (match, css) => {
 
 fs.writeFileSync(filePath, code);
 console.log('Optimized wa-privacy-panel.js size in bytes:', Buffer.byteLength(code));
+
