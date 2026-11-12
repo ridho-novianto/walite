@@ -20,7 +20,7 @@ Walite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tail
 
 ## Installation
 
-Download `Walite_0.1.0_x64-setup.exe` (~1.14 MB) from [Releases](https://github.com/ridho-novianto/walite/releases). Note that Windows SmartScreen may show an unverified publisher notice because this open-source build is not digitally code-signed.
+Download `Walite_0.1.1_x64-setup.exe` (~1.14 MB) from [Releases](https://github.com/ridho-novianto/walite/releases). Note that Windows SmartScreen may show an unverified publisher notice because this open-source build is not digitally code-signed. Upgrading from a previous version can be done seamlessly by running the installer directly without uninstalling.
 
 ## Building from Source
 
@@ -32,7 +32,7 @@ npm run tauri build
 ```
 Build outputs:
 - Binary: `src-tauri/target/release/walite.exe` (~3.24 MB)
-- Installer: `src-tauri/target/release/bundle/nsis/Walite_0.1.0_x64-setup.exe` (~1.14 MB)
+- Installer: `src-tauri/target/release/bundle/nsis/Walite_0.1.1_x64-setup.exe` (~1.14 MB)
 
 ## Updating Selectors
 
