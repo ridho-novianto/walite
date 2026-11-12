@@ -54,7 +54,7 @@ Dibandingkan wrapper berbasis Electron konvensional maupun membuka tab browser p
 - **System Tray & WebSocket Persistence:** Menekan tombol Close (X) mengintersepsi event penutupan untuk menyembunyikan aplikasi ke system tray (`hide()`). Koneksi WebSocket WhatsApp dan notifikasi latar belakang tetap aktif tanpa jeda (*no throttling*).
 - **Navigasi Terisolasi (Strict Navigation Guard):** Jendela hanya mengizinkan origin resmi `https://web.whatsapp.com`. Seluruh tautan eksternal (link obrolan, `wa.me`, dll.) maupun popup `target="_blank"` otomatis dialihkan ke peramban standar sistem operasi melalui plugin opener yang aman.
 - **Granular Permission Controller:** Izin perangkat keras (Mikrofon untuk *Voice Note*, Kamera, dan Notifikasi) hanya diberikan kepada origin WhatsApp Web; origin lain otomatis ditolak. Berkas yang diunduh langsung diarahkan ke direktori *Downloads* sistem.
-- **Suite Privasi Visual Mandiri (CSS-Only Blur):** Panel privasi floating shield di kiri bawah (`bottom: 18px; left: 14px`) untuk mengaburkan elemen sensitif secara instan:
+- **Suite Privasi Visual Mandiri (CSS-Only Blur):** Panel privasi floating shield di kanan bawah (`bottom: 22px; right: 22px`) yang dapat disembunyikan (*hide/show toggle* via `Alt + H` atau tombol minimize `–`) agar tidak menghalangi navigasi dan profil WhatsApp Web, berfungsi mengaburkan elemen sensitif secara instan:
   - Nama pengguna & grup obrolan (`#pane-side` & header).
   - Foto profil kontak & grup.
   - Cuplikan pesan terakhir di daftar chat.
@@ -213,8 +213,9 @@ Hasil kompilasi akan berada di:
 
 | Pintasan | Aksi | Deskripsi |
 | :--- | :--- | :--- |
-| `Alt + Z` | **Toggle Overall Blur** | Mengaktifkan atau menonaktifkan seluruh efek pengaburan visual sekaligus. |
+| `Alt + Z` | **Buka Panel Privasi** | Membuka atau menutup popup panel pengaturan privasi Walite. |
 | `Alt + X` | **Lock Screen** | Mengunci tampilan antarmuka seketika dengan lapisan blur fullscreen. |
+| `Alt + H` | **Toggle Tombol Mengambang** | Menyembunyikan atau menampilkan kembali ikon floating shield di kanan bawah. |
 
 ### Pembaruan SELECTORS saat DOM WhatsApp Berubah
 

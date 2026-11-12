@@ -9,7 +9,7 @@ Walite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tail
 - **Single Instance**: Opening a duplicate executable seamlessly focuses the existing window without creating redundant processes.
 - **System Tray Integration**: Closing the window (X) minimizes to tray, preserving WebSocket connections and incoming notifications. Full exit is available via tray right-click "Keluar".
 - **Navigation Isolation**: Webview navigation is strictly locked to `https://web.whatsapp.com`. External links open via the user's default browser.
-- **Client-Side Privacy Suite**: Single-file CSS-only blur controls for contact names, avatars, message previews, chat logs, media, and text input, toggled via `Alt + Z`.
+- **Client-Side Privacy Suite**: Single-file CSS-only blur controls for contact names, avatars, message previews, chat logs, media, and text input, toggled via `Alt + Z`. Floating shield button is positioned at the bottom-right and can be toggled/hidden anytime via `Alt + H` or the header minimize button.
 - **Screen Lock**: Fullscreen privacy blur overlay with PBKDF2 SHA-256 (100,000 iterations) password hashing and configurable auto-lock on idle.
 
 ## System Requirements

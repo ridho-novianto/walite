@@ -23,3 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Idle auto-lock detection via passive input listeners.
   - About dialog with copyright and legal disclaimer.
 - Per-user NSIS installer bundle (`Walite_0.1.0_x64-setup.exe`, ~1.14 MB).
+
+### Changed
+- Relocated floating shield button from bottom-left to bottom-right (`bottom: 22px; right: 22px`) to prevent obstructing WhatsApp Web navigation rail and profile picture.
+- Added toggle hide support for floating shield button with persistence (`Alt + H` shortcut, panel toggle switch, and header minimize button).
+- Added click-outside listener to automatically dismiss privacy panel.
