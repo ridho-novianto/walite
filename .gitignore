@@ -1,0 +1,25 @@
+# Build outputs
+target/
+dist/
+build/
+*.log
+
+# Dependencies
+node_modules/
+
+# Secrets & Environment
+.env
+.env.*
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS artifacts
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+

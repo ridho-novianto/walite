@@ -1,0 +1,18 @@
+{
+  "name": "walite",
+  "version": "0.1.0",
+  "description": "Lightweight, secure, and privacy-focused WhatsApp Web wrapper for Windows",
+  "author": "Ridho Novianto",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ridho-novianto/walite.git"
+  },
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@tauri-apps/cli": "^2.12.4"
+  }
+}
