@@ -28,3 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Relocated floating shield button from bottom-left to bottom-right (`bottom: 22px; right: 22px`) to prevent obstructing WhatsApp Web navigation rail and profile picture.
 - Added toggle hide support for floating shield button with persistence (`Alt + H` shortcut, panel toggle switch, and header minimize button).
 - Added click-outside listener to automatically dismiss privacy panel.
+
+### Fixed
+- Fixed CSS selector scoping bug where un-prefixed comma-separated selectors remained permanently blurred even when overall or granular privacy switches were toggled off.
