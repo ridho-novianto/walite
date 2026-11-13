@@ -5,6 +5,17 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-11-13
+
+### Added
+- **Branded Toast Notifications**: Intercepted Web Notifications to set the official circular Walite logo as the notification icon/badge and branded notification titles with `WaLite • [Pengirim]` instead of generic `web.whatsapp.com`.
+- **Hidden Promotional Banner**: Automatically hidden the annoying "Dapatkan WhatsApp untuk Windows" / "Get WhatsApp for Windows" desktop upsell banner across both CSS and continuous DOM cleaning.
+
+### Fixed
+- **Emoji Included in Text Filter**: Fixed emojis in chat messages to blur and unblur naturally alongside message text (`blurMessages`). Avatar blur (`blurAvatars`) no longer touches emojis, and emoji picker panel remains unblurred for convenient selection.
+- **Fixed Sticker Infinite Loading**: Resolved the issue where stickers wouldn't load and spun indefinitely by allowing WhatsApp and Facebook CDN domains (`*.whatsapp.net`, `*.fbcdn.net`, `*.whatsapp.com`) in internal URL guards and strictly scoping the download manager to explicit `a[download]` file actions.
+- **Dock & Taskbar Window Icon**: Explicitly attached default window icon to `WebviewWindowBuilder` and `TrayIconBuilder` in Rust, ensuring the new circular chat bubble logo displays accurately on the Windows taskbar and system tray.
+
 ## [0.1.4] - 2026-11-13
 
 ### Added

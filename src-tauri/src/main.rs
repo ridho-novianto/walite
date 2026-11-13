@@ -38,9 +38,21 @@ fn is_safe_external_scheme(scheme: &str) -> bool {
 }
 
 fn is_allowed_internal_url(url: &Url) -> bool {
-    (url.scheme() == "https" && url.host_str() == Some("web.whatsapp.com"))
-        || (url.scheme() == "blob" && url.as_str().starts_with("blob:https://web.whatsapp.com/"))
-        || url.as_str() == "about:blank"
+    if url.scheme() == "blob" || url.scheme() == "data" || url.as_str() == "about:blank" {
+        return true;
+    }
+    if url.scheme() == "https" {
+        if let Some(host) = url.host_str() {
+            if host == "web.whatsapp.com"
+                || host.ends_with(".whatsapp.com")
+                || host.ends_with(".whatsapp.net")
+                || host.ends_with(".fbcdn.net")
+            {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
@@ -108,6 +120,10 @@ fn main() {
                 .drag_and_drop(true)
                 .initialization_script(include_str!("../wa-privacy-panel.js"))
                 .initialization_script(include_str!("../wa-download-manager.js"));
+
+            if let Some(icon) = app.default_window_icon() {
+                builder = builder.icon(icon.clone())?;
+            }
 
             #[cfg(not(debug_assertions))]
             {

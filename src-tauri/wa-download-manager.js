@@ -1,18 +1,11 @@
-/* Walite Download Manager */
+/* Walite Download Manager & Notification Enhancer */
 (function () {
   'use strict';
-  if (window.__WALITE_DOWNLOAD_MANAGER__) return;
-  window.__WALITE_DOWNLOAD_MANAGER__ = true;
+  if (window.__WALITE_DM_INITIALIZED__) return;
+  window.__WALITE_DM_INITIALIZED__ = true;
 
+  const WALITE_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAHPElEQVR42sVXaWxUVRS+974305m2M13oCgolbiwKtS3BhaQ1ImFpqVGmGAMaTcAIAv7QGEra19eiRv3hFg00MRq3hLYYdaZqcKMBQUtnKkobEJBYoGNLaZnOTNuZee9ez30zD960UxYl8abLW+495zvnfGd5BP3PS/yX5zCiFElIxvxGRhJDhLB/J+galoM1Cf17u3DbfbKS6H3pj5KYUzaXNeMq9boC4IrHC32w+6Upali1q2EFm1mS7/OF1eeNcuEMuRogVwKAwSpBt7jikPwAImgNXN5PzOI0wWLSNqljEQRg+uGyDWH2vqtI+lr3CJzlINi1A6AU3hH+w1Z0NpRhSt9KmZZxR/jCCFKCIQ8i+GfY0wP/Q0zFaZigWxhj95hSLTOVwFgPo3Sda4G8JyoH1iQcwZMqjx0od9e/aM21V4cG/PCY1SmC+t438+Uzk+GucEs3Iyw8iwWykal0h7Oo9unxMq8EQGM431zukd+zFWQ/6T917jtsEtc4523r4xskKpG9bdw98autVFJ1Jct/kfIEk/AFQ+xvCEllFATIJvHhwImYzGNe0SnXpc7IlkD5B65i6Qn+bn3HTlO+s1eVZZlO9BrCEpKw1zNVGAwfFVvueX1U80hn/TsIYuMskp7hwGUSfzYOgKMJ2F5VpZa75but2fYDo+f837qKa5cYgel7ubDulm7cXNWsJrJMyxy2inKPVLgbNqEIcjnvqjk1PhQ4UewBdTuIWzDsU03WaZmCEPBNby2qPa4rirMkdmbl/udt1JI8DRNyG3CloLWk7k2+TytUJIHHYosYrdfi3iEtSs5PXwDYNqTZTYWmgG8QM+bmMeXKuSe4wJXu7SUVHp6WUWuY1VYN1z8whnZjgh/iz7rxXMz36kAuC6A/uyvqDUweCw0GkeXEb42M0Fnm9ORkIhAbEdBUjWgQhlVHpEyG6QHY3MIBcc8wzFZrtT3ZLDCEXzEqMXgATwpAjy/GaAkUln08tioxtULeD5IkEweWpO8dCws11vx0XoV+0wjrqV+BEZ6JGbKoo5EzgUJ1D9/XzKqokTOxgoQnAogVi8pOKR0LwgxInQPa47O9I9w5vOJBoNO09HLXzwYxG9SREGIY/R6zawP8HYbqmMEY3tVGZEXzTIyY49gfB0IDoHc1WOmCFQxj5BS/+Wb52yGIqVdIEuGUmh0taOhls91iZlwMY0eWel7MBnHL4K6Xuw8x5VO+r6wUAgOh4anLlQOx10NR61r6h2TXQMSMjiMHVkQBY+152PD4T80DWEgtb5cXWDJSKsP+0WOMMi6mT0RqNewZglRPoqHIcVeJ7EGSRFwer8ClN5Y8FSn31D8qWsw7Ratpjjgc5ZJudDRN5KimsFUJ0gj0DqZmXVTP2FHebBijD2ERfxg6HwgB47YzRQXmIQdkyDoI2RdEFGYCT5qirJOpu6Qxwk8DP2qSMlI+4TKUsbBfUVDAqDM6kEgyg6kCBc+hAcEeCUKDmWdgyaHw0Ah4AJdacuymsT7/ZkKU/UwVkGizrIbGcxh2HbNk29CY19eu9Y8OKYsRoYwwJtluyrl9+GTfZ5pXGV5q6+n2GnWSmBLmaHLobbcDLFys6y8upPuUUOREyvQpoNzX7iyueTuUkumFOaDPnJGCIBKbEIUMEDjj2LsVbvlXCJfXdkNmMzGJt/tP9tdCL3gYsqQQHNLBs4tXSZ2ghjowJ1YH8C5rXloe9IJ79RymSH08+NdAC4TBoZHz1i0hoMra4JnzG1tLpH0Qi6bg2cHTkBV5cH4ukPJo8PRgfSRCC6AbNmilPdc+CzzwvqZrbxeeWIpjJZWnIkXiEAT9ezi8eHwP4ASD34szoN4/+L7UdFMuuH7kq/lbh4zkBhIeBHmz/cM0S5Nl6B04USeENvwcNKPXRvt9j7iK63bBc0vA5lXdRTuUS4odAvca3z+hy4ExIMMKGTGyoqNui21G1hvBnsG1zuLaj8cbFAdAF1TZ3nCjOMXaE/IFP+PxiwNYCiMWSTBiGdpxI7RsngkrO2WHJTe9adR7ocVZLDkSteO4sTw2ZFBVpKt56QFLtnGQYE0JADmkI9eq3IRpBPgSfa8pAMu3WvIyXgLlB5131lRpmc/HdyRfZiLS2zEwWSMTYtDd8GJrjo2M9Q8fgdPVEMevJxvLJeBHZzlZRgl6NXV61pzA6YEmV2HNI1xmIuvjAPCY8hSByfdeU7p1f8Q/NggKYQaguyHFzjGKGpLz024Y9fqCcOoHuHdDPe0VMFEpZjnA8CLIhiXJ+RlpI94hGNHxZldR7acJesEkHriUBQWUirPwqPmnLxe94I9ns7wM0m8NeKWMiGRqtETDCBlWocpFLgCA/XD/keX4rN08MzTFV/hqwpNNw0amG9u1vpYffjnDRFEaVmBOVkjAuXBrv/HshPS96u8CAOHALUSf58Z/7Vzu0+zip9tkmfJfvw3HA734cSrHavtVKr0+AK7T+gdG/thRvzZjzgAAAABJRU5ErkJggg==';
   const TEAL = '#00a884';
-
-  // Keep blob URLs alive in memory so users have time to decide
-  const originalRevoke = URL.revokeObjectURL;
-  URL.revokeObjectURL = function (url) {
-    setTimeout(() => {
-      try { originalRevoke.call(URL, url); } catch (_) {}
-    }, 60000);
-  };
 
   function formatBytes(bytes) {
     if (!bytes || bytes <= 0) return '';
@@ -71,7 +64,7 @@
           statusEl.textContent = 'Penyimpanan dibatalkan.';
           return false;
         }
-        console.warn('[Walite] showSaveFilePicker fallback:', e);
+        console.warn('[Walite] SaveAs fallback:', e);
         statusEl.textContent = 'Mencoba cara penyimpanan alternatif...';
       }
     }
@@ -87,13 +80,12 @@
       setTimeout(() => {
         if (a.parentNode) a.parentNode.removeChild(a);
         URL.revokeObjectURL(u);
-      }, 2000);
+      }, 3000);
       statusEl.style.color = TEAL;
       statusEl.textContent = '✓ Unduhan dikirim ke browser!';
       setTimeout(closeDialog, 1200);
       return true;
     } catch (err) {
-      console.error('[Walite] Download fallback error:', err);
       statusEl.style.color = '#f15c6d';
       statusEl.textContent = 'Gagal menyimpan berkas.';
       btnSave.disabled = false;
@@ -113,7 +105,6 @@
     card.style.width = '360px';
     card.style.maxWidth = '90vw';
 
-    // Header
     const hdr = document.createElement('div');
     hdr.style.display = 'flex';
     hdr.style.alignItems = 'center';
@@ -131,11 +122,9 @@
     closeBtn.style.fontSize = '18px';
     closeBtn.addEventListener('click', closeDialog);
 
-    hdr.appendChild(title);
-    hdr.appendChild(closeBtn);
+    hdr.append(title, closeBtn);
     card.appendChild(hdr);
 
-    // File Preview Info Box
     const fileBox = document.createElement('div');
     fileBox.style.background = '#111b21';
     fileBox.style.borderRadius = '8px';
@@ -169,15 +158,12 @@
     const sizeEl = document.createElement('div');
     sizeEl.style.color = '#8696a0';
     sizeEl.style.fontSize = '11px';
-    sizeEl.textContent = blob && blob.size ? formatBytes(blob.size) : 'Ukuran tidak diketahui';
+    sizeEl.textContent = blob && blob.size ? formatBytes(blob.size) : 'Ukuran berkas';
 
-    infoEl.appendChild(nameEl);
-    infoEl.appendChild(sizeEl);
-    fileBox.appendChild(iconEl);
-    fileBox.appendChild(infoEl);
+    infoEl.append(nameEl, sizeEl);
+    fileBox.append(iconEl, infoEl);
     card.appendChild(fileBox);
 
-    // Status / Message
     const statusEl = document.createElement('div');
     statusEl.style.fontSize = '12px';
     statusEl.style.minHeight = '18px';
@@ -186,13 +172,11 @@
     statusEl.textContent = 'Pilih tindakan untuk berkas ini:';
     card.appendChild(statusEl);
 
-    // Actions Group
     const actions = document.createElement('div');
     actions.style.display = 'flex';
     actions.style.flexDirection = 'column';
     actions.style.gap = '8px';
 
-    // 1. Save As / Save Button
     const btnSave = document.createElement('button');
     btnSave.className = 'wl-modal-btn wl-modal-btn-primary';
     btnSave.style.padding = '10px 14px';
@@ -207,7 +191,6 @@
     });
     actions.appendChild(btnSave);
 
-    // 2. Open Button
     const btnOpen = document.createElement('button');
     btnOpen.className = 'wl-modal-btn wl-modal-btn-cancel';
     btnOpen.style.padding = '9px 14px';
@@ -225,12 +208,11 @@
         statusEl.textContent = 'Membuka berkas...';
         setTimeout(closeDialog, 600);
       } catch (err) {
-        console.error('[Walite] Open error:', err);
+        console.error(err);
       }
     });
     actions.appendChild(btnOpen);
 
-    // 3. Cancel Button
     const btnCancel = document.createElement('button');
     btnCancel.className = 'wl-link-about';
     btnCancel.style.marginTop = '6px';
@@ -246,7 +228,6 @@
   async function handleDownloadIntercept(url, rawFilename) {
     let filename = rawFilename || 'file';
     if (!filename.includes('.')) {
-      // Try to infer extension from url or mime
       const urlExt = url.split('.').pop().split('?')[0];
       if (urlExt && urlExt.length <= 4) filename += '.' + urlExt;
     }
@@ -256,36 +237,87 @@
       const blob = await res.blob();
       showDownloadModal(blob, filename, url);
     } catch (e) {
-      console.warn('[Walite] Could not pre-fetch blob:', e);
-      // If fetch fails, show modal with fallback url
       showDownloadModal(null, filename, url);
     }
   }
 
-  // Intercept HTMLAnchorElement.prototype.click
+  // Intercept anchor clicks ONLY when an explicit download is requested
   const originalClick = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function () {
-    const href = this.href || this.getAttribute('href') || '';
-    const download = this.download || this.getAttribute('download');
-    if (href.startsWith('blob:') || download) {
-      handleDownloadIntercept(href, download || 'download');
-      return;
+    const downloadAttr = this.getAttribute('download');
+    const downloadProp = this.download;
+    const hasDownload = downloadAttr !== null || (typeof downloadProp === 'string' && downloadProp.length > 0);
+
+    if (hasDownload) {
+      const href = this.href || this.getAttribute('href') || '';
+      const filename = downloadAttr || downloadProp || 'download';
+      if (href) {
+        handleDownloadIntercept(href, filename);
+        return;
+      }
     }
     return originalClick.apply(this, arguments);
   };
 
-  // Intercept DOM clicks on anchor elements
+  // Intercept DOM clicks ONLY on actual download triggers
   document.addEventListener('click', function (e) {
     const a = e.target && e.target.closest ? e.target.closest('a') : null;
     if (a) {
-      const href = a.href || a.getAttribute('href') || '';
-      const download = a.download || a.getAttribute('download');
-      if (href.startsWith('blob:') || download) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleDownloadIntercept(href, download || 'download');
+      const downloadAttr = a.getAttribute('download');
+      const downloadProp = a.download;
+      const hasDownload = downloadAttr !== null || (typeof downloadProp === 'string' && downloadProp.length > 0);
+      if (hasDownload) {
+        const href = a.href || a.getAttribute('href') || '';
+        if (href) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleDownloadIntercept(href, downloadAttr || downloadProp || 'download');
+        }
       }
     }
   }, true);
-})();
 
+  // Brand Notifications as WaLite and set Logo Icon
+  if ('Notification' in window) {
+    const OriginalNotification = window.Notification;
+    window.Notification = function (title, options) {
+      options = options || {};
+      const appTitle = title ? ('WaLite • ' + title) : 'WaLite';
+      if (!options.icon || options.icon.includes('whatsapp') || options.icon.includes('blob:')) {
+        options.icon = WALITE_ICON;
+      }
+      options.badge = WALITE_ICON;
+      return new OriginalNotification(appTitle, options);
+    };
+    Object.assign(window.Notification, OriginalNotification);
+    window.Notification.prototype = OriginalNotification.prototype;
+    if (OriginalNotification.permission) {
+      try {
+        Object.defineProperty(window.Notification, 'permission', {
+          get: () => OriginalNotification.permission
+        });
+      } catch (_) {}
+    }
+  }
+
+  // Hide Desktop Upsell Banner
+  function removeDesktopUpsell() {
+    const elms = document.querySelectorAll('span[data-icon="windows"], span[data-icon="microsoft"], a[href*="whatsapp.com/download"], a[href*="aka.ms/uwp"]');
+    elms.forEach((el) => {
+      let p = el.parentElement;
+      for (let i = 0; i < 5 && p; i++) {
+        if (p.textContent && (p.textContent.includes('Dapatkan WhatsApp') || p.textContent.includes('Get WhatsApp'))) {
+          p.style.setProperty('display', 'none', 'important');
+          p.style.setProperty('height', '0', 'important');
+          p.style.setProperty('margin', '0', 'important');
+          p.style.setProperty('padding', '0', 'important');
+          break;
+        }
+        p = p.parentElement;
+      }
+    });
+  }
+
+  setInterval(removeDesktopUpsell, 1500);
+  document.addEventListener('DOMContentLoaded', removeDesktopUpsell);
+})();
