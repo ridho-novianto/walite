@@ -7,16 +7,10 @@ use tauri::{
     webview::{DownloadEvent, NewWindowResponse, PermissionKind, PermissionResponse},
     Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
-use tauri_plugin_opener::OpenerExt;
 
 const TARGET_URL: &str = "https://web.whatsapp.com";
 const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate,HideCursorWhileTyping \
-    --disable-background-networking \
-    --disable-default-apps \
-    --disable-extensions \
-    --disable-sync \
     --no-first-run \
-    --renderer-process-limit=2 \
     --disable-background-timer-throttling \
     --disable-renderer-backgrounding \
     --disable-backgrounding-occluded-windows";
@@ -35,6 +29,28 @@ fn get_persistent_data_dir() -> PathBuf {
 
 fn is_safe_external_scheme(scheme: &str) -> bool {
     matches!(scheme, "http" | "https" | "mailto" | "tel")
+}
+
+fn open_in_default_browser(url: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let res = std::process::Command::new("rundll32")
+            .args(["url.dll,FileProtocolHandler", url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn();
+        if res.is_err() {
+            let _ = std::process::Command::new("cmd")
+                .args(["/C", "start", "", url])
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn();
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = open::that_detached(url);
+    }
 }
 
 fn is_allowed_internal_url(url: &Url) -> bool {
@@ -137,27 +153,38 @@ fn main() {
                 builder = builder.devtools(false);
             }
 
-            // Navigation handler
-            let app_handle_nav = app_handle.clone();
+            // Navigation handler: keep Walite on WhatsApp Web, open external links in browser
             builder = builder.on_navigation(move |url| {
-                if is_allowed_internal_url(url) {
+                let url_str = url.as_str();
+                let is_internal_app = url_str == "about:blank" || {
+                    if url.scheme() == "https" {
+                        url.host_str() == Some("web.whatsapp.com")
+                    } else {
+                        false
+                    }
+                };
+
+                if is_internal_app {
                     true
                 } else {
                     if is_safe_external_scheme(url.scheme()) {
-                        let _ = app_handle_nav.opener().open_url(url.as_str(), None::<&str>);
+                        open_in_default_browser(url_str);
                     }
                     false
                 }
             });
 
-            // New window handler (e.g. window.open, target="_blank")
-            let app_handle_window = app_handle.clone();
+            // New window handler (e.g. target="_blank", window.open)
             builder = builder.on_new_window(move |url, _features| {
-                if is_allowed_internal_url(&url) {
+                let url_str = url.as_str();
+                if url_str == "about:blank" || url_str.is_empty() {
+                    return NewWindowResponse::Deny;
+                }
+                if url.scheme() == "blob" || url.scheme() == "data" {
                     return NewWindowResponse::Allow;
                 }
                 if is_safe_external_scheme(url.scheme()) {
-                    let _ = app_handle_window.opener().open_url(url.as_str(), None::<&str>);
+                    open_in_default_browser(url_str);
                 }
                 NewWindowResponse::Deny
             });

@@ -1,6 +1,6 @@
 [package]
 name = "walite"
-version = "0.1.6"
+version = "0.1.7"
 description = "Lightweight, secure, and privacy-focused WhatsApp Web wrapper for Windows"
 authors = ["Ridho Novianto"]
 license = "MIT"

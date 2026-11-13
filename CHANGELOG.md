@@ -5,6 +5,12 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-11-13
+
+### Fixed
+- **External Link Redirect to Default Browser**: Fixed links in WhatsApp Web chats (e.g. YouTube, Google, web links) failing to redirect to the user's default browser (Brave, Chrome, Edge). Intercepted external link clicks in both DOM capture phase and Rust `on_navigation` / `on_new_window` handlers using an instantaneous native Win32 `rundll32 url.dll,FileProtocolHandler` call, ensuring external links open smoothly in the system default browser while keeping Walite on WhatsApp Web.
+- **Sticker Infinite Loading & Download**: Fixed stickers continuously spinning and failing to download by removing restrictive Chromium flags (`--disable-background-networking` and `--renderer-process-limit=2`). WhatsApp Web Service Workers and WebAssembly Signal crypto workers now have full network and process capacity to download, decrypt, and render stickers and media seamlessly.
+
 ## [0.1.6] - 2026-11-13
 
 ### Fixed

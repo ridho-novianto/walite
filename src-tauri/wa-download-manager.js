@@ -258,20 +258,33 @@
     return originalClick.apply(this, arguments);
   };
 
-  // Intercept DOM clicks ONLY on actual download triggers
+  // Intercept DOM clicks on downloads and external links
   document.addEventListener('click', function (e) {
     const a = e.target && e.target.closest ? e.target.closest('a') : null;
     if (a) {
+      const href = a.href || a.getAttribute('href') || '';
       const downloadAttr = a.getAttribute('download');
       const downloadProp = a.download;
       const hasDownload = downloadAttr !== null || (typeof downloadProp === 'string' && downloadProp.length > 0);
       if (hasDownload) {
-        const href = a.href || a.getAttribute('href') || '';
         if (href) {
           e.preventDefault();
           e.stopPropagation();
           handleDownloadIntercept(href, downloadAttr || downloadProp || 'download');
+          return;
         }
+      }
+
+      // External link check: open in default browser
+      if (href && (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('tel:'))) {
+        try {
+          const u = new URL(href, window.location.href);
+          if (u.hostname !== 'web.whatsapp.com') {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(u.href, '_blank');
+          }
+        } catch (_) {}
       }
     }
   }, true);

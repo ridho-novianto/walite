@@ -285,7 +285,7 @@
     cd.append(el('div', 'wl-modal-title', 'Tentang Walite'));
 
     const bd = el('div', 'wl-modal-body');
-    const p1 = el('p', '', 'Walite v0.1.6');
+    const p1 = el('p', '', 'Walite v0.1.7');
     p1.style.fontWeight = '600';
     p1.style.color = '#e9edef';
     bd.appendChild(p1);
