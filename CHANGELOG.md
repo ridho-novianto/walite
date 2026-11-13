@@ -5,6 +5,15 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-11-13
+
+### Added
+- Integrated official new green handwritten "WL" chat bubble branding logo across the project (application icon, Windows .ico bundle, installer, and top banner in README).
+- Redesigned Privacy Panel to a modern Dark Glass aesthetic matching WhatsApp Web Dark Mode (`rgba(32, 44, 51, 0.96)`, frosted backdrop blur, WhatsApp emerald teal `#00a884`, dark surfaces `#202c33`, and muted subtext `#8696a0`).
+
+### Fixed
+- Fixed unblurred default WhatsApp profile pictures: expanded avatar selectors and unblur hover rules to cover SVGs, contact initials circles (e.g. "ST"), community/group placeholders, and custom profile photos.
+
 ## [0.1.2] - 2026-11-13
 
 ### Fixed
