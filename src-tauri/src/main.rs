@@ -157,7 +157,7 @@ fn main() {
                 .data_directory(data_dir)
                 .additional_browser_args(BROWSER_ARGS)
                 .disable_drag_drop_handler()
-                .drag_and_drop(true)
+                .drag_and_drop(false)
                 .initialization_script(include_str!("../wa-privacy-panel.js"))
                 .initialization_script(include_str!("../wa-download-manager.js"));
 
@@ -270,9 +270,19 @@ fn main() {
                         fn GetModuleHandleW(lpModuleName: *const u16) -> isize;
                         fn LoadIconW(hInstance: isize, lpIconName: *const u16) -> isize;
                         fn SendMessageW(hWnd: *mut std::ffi::c_void, Msg: u32, wParam: usize, lParam: isize) -> isize;
+                        fn ChangeWindowMessageFilterEx(
+                            hWnd: *mut std::ffi::c_void,
+                            message: u32,
+                            action: u32,
+                            pChangeFilterStruct: *mut std::ffi::c_void,
+                        ) -> i32;
                     }
                     let h_instance = GetModuleHandleW(std::ptr::null());
-                    let h_icon = LoadIconW(h_instance, 1 as *const u16);
+                    // 32512 is IDI_APPLICATION used by winres/tauri-build
+                    let mut h_icon = LoadIconW(h_instance, 32512 as *const u16);
+                    if h_icon == 0 {
+                        h_icon = LoadIconW(h_instance, 1 as *const u16);
+                    }
                     if h_icon != 0 {
                         const WM_SETICON: u32 = 0x0080;
                         const ICON_SMALL: usize = 0;
@@ -280,6 +290,15 @@ fn main() {
                         SendMessageW(hwnd.0, WM_SETICON, ICON_BIG, h_icon);
                         SendMessageW(hwnd.0, WM_SETICON, ICON_SMALL, h_icon);
                     }
+
+                    // Ensure Windows Explorer drag-and-drop messages bypass any UIPI restrictions
+                    const WM_DROPFILES: u32 = 0x0233;
+                    const WM_COPYDATA: u32 = 0x004A;
+                    const WM_COPYGLOBALDATA: u32 = 0x0049;
+                    const MSGFLT_ALLOW: u32 = 1;
+                    let _ = ChangeWindowMessageFilterEx(hwnd.0, WM_DROPFILES, MSGFLT_ALLOW, std::ptr::null_mut());
+                    let _ = ChangeWindowMessageFilterEx(hwnd.0, WM_COPYDATA, MSGFLT_ALLOW, std::ptr::null_mut());
+                    let _ = ChangeWindowMessageFilterEx(hwnd.0, WM_COPYGLOBALDATA, MSGFLT_ALLOW, std::ptr::null_mut());
                 }
             }
 

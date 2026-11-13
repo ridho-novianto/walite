@@ -143,26 +143,45 @@
 
     const card = document.createElement('div');
     card.className = 'wl-modal-card';
-    card.style.cssText = 'width:340px;max-width:92vw;padding:18px 20px 16px;background:rgba(32,44,51,0.96);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.55);';
+    card.style.cssText =
+      'width:360px;max-width:92vw;padding:20px 22px 18px;background:rgba(24,34,41,0.96);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 24px 48px -12px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);font-family:Segoe UI,system-ui,-apple-system,sans-serif;';
 
     const hdr = document.createElement('div');
-    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
+
+    const titleBox = document.createElement('div');
+    titleBox.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
+    const titleIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    titleIcon.setAttribute('viewBox', '0 0 24 24');
+    titleIcon.style.cssText = 'width:16px;height:16px;fill:none;stroke:#00a884;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;';
+    const tPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    tPath.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
+    const tPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    tPoly.setAttribute('points', '7 10 12 15 17 10');
+    const tLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    tLine.setAttribute('x1', '12'); tLine.setAttribute('y1', '15');
+    tLine.setAttribute('x2', '12'); tLine.setAttribute('y2', '3');
+    titleIcon.append(tPath, tPoly, tLine);
 
     const title = document.createElement('div');
     title.style.cssText = 'font-size:14px;font-weight:600;color:#e9edef;letter-spacing:0.2px;';
     title.textContent = 'Unduh Berkas';
+    titleBox.append(titleIcon, title);
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'wl-panel-btn-icon';
     closeBtn.textContent = '×';
-    closeBtn.style.cssText = 'background:none;border:none;font-size:18px;color:#8696a0;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;';
+    closeBtn.style.cssText = 'background:none;border:none;font-size:18px;color:#8696a0;cursor:pointer;line-height:1;padding:2px 8px;border-radius:6px;transition:background .15s,color .15s;';
+    closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(255,255,255,0.08)'; closeBtn.style.color = '#e9edef'; };
+    closeBtn.onmouseleave = () => { closeBtn.style.background = 'none'; closeBtn.style.color = '#8696a0'; };
     closeBtn.addEventListener('click', closeDialog);
 
-    hdr.append(title, closeBtn);
+    hdr.append(titleBox, closeBtn);
     card.appendChild(hdr);
 
     const fileBox = document.createElement('div');
-    fileBox.style.cssText = 'background:#111b21;border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:12px;border:1px solid #222e35;';
+    fileBox.style.cssText = 'background:rgba(17,27,33,0.7);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,0.06);';
 
     const iconEl = createFileIconBadge(filename);
 
@@ -191,16 +210,20 @@
     actions.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
 
     const btnSave = document.createElement('button');
-    btnSave.style.cssText = 'background:#00a884;color:#111b21;border:none;border-radius:7px;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;';
+    btnSave.style.cssText = 'background:linear-gradient(180deg,#00b890 0%,#009e7c 100%);color:#111b21;border:none;border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;box-shadow:0 2px 8px rgba(0,168,132,0.35);';
     btnSave.append(createSaveSvg(), document.createTextNode('Simpan Sebagai...'));
+    btnSave.onmouseenter = () => { btnSave.style.transform = 'translateY(-1px)'; btnSave.style.boxShadow = '0 4px 12px rgba(0,168,132,0.45)'; };
+    btnSave.onmouseleave = () => { btnSave.style.transform = 'none'; btnSave.style.boxShadow = '0 2px 8px rgba(0,168,132,0.35)'; };
     btnSave.addEventListener('click', () => {
       saveWithPicker(blob, filename, statusEl, btnSave);
     });
     actions.appendChild(btnSave);
 
     const btnOpen = document.createElement('button');
-    btnOpen.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e9edef;border-radius:7px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s;';
+    btnOpen.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#e9edef;border-radius:8px;padding:9px 16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s;';
     btnOpen.append(createOpenSvg(), document.createTextNode('Buka Langsung'));
+    btnOpen.onmouseenter = () => { btnOpen.style.background = 'rgba(255,255,255,0.1)'; btnOpen.style.borderColor = 'rgba(255,255,255,0.2)'; };
+    btnOpen.onmouseleave = () => { btnOpen.style.background = 'rgba(255,255,255,0.06)'; btnOpen.style.borderColor = 'rgba(255,255,255,0.12)'; };
     btnOpen.addEventListener('click', () => {
       try {
         const openUrl = url || URL.createObjectURL(blob);
@@ -215,8 +238,10 @@
 
     const btnCancel = document.createElement('button');
     btnCancel.className = 'wl-link-about';
-    btnCancel.style.cssText = 'background:none;border:none;color:#8696a0;font-size:12px;cursor:pointer;margin-top:4px;align-self:center;padding:4px;';
+    btnCancel.style.cssText = 'background:none;border:none;color:#8696a0;font-size:12px;font-weight:500;cursor:pointer;margin-top:4px;align-self:center;padding:4px 10px;border-radius:4px;transition:color .15s;';
     btnCancel.textContent = 'Batal';
+    btnCancel.onmouseenter = () => { btnCancel.style.color = '#e9edef'; };
+    btnCancel.onmouseleave = () => { btnCancel.style.color = '#8696a0'; };
     btnCancel.addEventListener('click', closeDialog);
     actions.appendChild(btnCancel);
 
@@ -312,10 +337,11 @@
     }
   }
 
-  // Permanently Remove Desktop Upsell Banner (ONLY inside #pane-side when logged in)
+  // Permanently Remove Desktop Upsell Banner across WhatsApp Web
   function removeDesktopUpsell() {
-    const paneSide = document.getElementById('pane-side');
-    if (!paneSide) return;
+    // If not logged in yet (e.g. QR code page), don't remove QR code container
+    const isLoginPage = document.querySelector('canvas[aria-label*="Scan"]') || document.querySelector('[data-testid="qrcode"]');
+    if (isLoginPage) return;
 
     const selectors = [
       'span[data-icon="windows"]',
@@ -326,10 +352,21 @@
       '[data-testid*="banner"]',
       '[data-testid*="upsell"]'
     ];
-    paneSide.querySelectorAll(selectors.join(',')).forEach((el) => {
+    document.querySelectorAll(selectors.join(',')).forEach((el) => {
+      if (el.closest('#main') || el.closest('[role="row"]') || el.closest('[data-testid="qrcode"]')) return;
       let p = el;
-      for (let i = 0; i < 5 && p && p !== paneSide; i++) {
-        if (p.textContent && (p.textContent.includes('Dapatkan WhatsApp') || p.textContent.includes('Get WhatsApp') || p.textContent.includes('WhatsApp untuk Windows') || p.textContent.includes('WhatsApp for Windows'))) {
+      for (let i = 0; i < 6 && p && p !== document.body && p !== document.documentElement; i++) {
+        const text = p.textContent || '';
+        if (
+          text.includes('Dapatkan WhatsApp') ||
+          text.includes('Get WhatsApp') ||
+          text.includes('WhatsApp untuk Windows') ||
+          text.includes('WhatsApp for Windows') ||
+          p.matches('[data-testid*="banner"]') ||
+          p.matches('[data-testid*="upsell"]') ||
+          p.querySelector('a[href*="whatsapp.com/download"]') ||
+          p.querySelector('a[href*="aka.ms/uwp"]')
+        ) {
           p.style.setProperty('display', 'none', 'important');
           p.style.setProperty('height', '0', 'important');
           p.style.setProperty('max-height', '0', 'important');
@@ -344,13 +381,21 @@
     });
 
     try {
-      const walker = document.createTreeWalker(paneSide, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       let node;
       while ((node = walker.nextNode())) {
         const val = node.nodeValue;
-        if (val && (val.includes('Dapatkan WhatsApp') || val.includes('Get WhatsApp') || val.includes('WhatsApp untuk Windows') || val.includes('WhatsApp for Windows'))) {
-          let p = node.parentElement;
-          for (let i = 0; i < 5 && p && p !== paneSide; i++) {
+        if (
+          val &&
+          (val.includes('Dapatkan WhatsApp') ||
+            val.includes('Get WhatsApp') ||
+            val.includes('WhatsApp untuk Windows') ||
+            val.includes('WhatsApp for Windows'))
+        ) {
+          const parent = node.parentElement;
+          if (!parent || parent.closest('#main') || parent.closest('[role="row"]') || parent.closest('[data-testid="qrcode"]')) continue;
+          let p = parent;
+          for (let i = 0; i < 6 && p && p !== document.body && p !== document.documentElement; i++) {
             p.style.setProperty('display', 'none', 'important');
             p.style.setProperty('height', '0', 'important');
             p.style.setProperty('max-height', '0', 'important');
@@ -395,6 +440,24 @@
         }
         #pane-side :is([role="row"], [role="listitem"], [data-testid*="cell-frame"]) {
           cursor: pointer !important;
+        }
+
+        /* Permanently suppress WhatsApp desktop upsell banners outside chat messages */
+        :is(#side, #app, header, aside, [role="navigation"]) :is(
+          [data-testid*="banner"],
+          [data-testid*="upsell"],
+          div:has(> a[href*="whatsapp.com/download"]),
+          div:has(a[href*="aka.ms/uwp"]),
+          div:has(span[data-icon="windows"]),
+          div:has(span[data-icon="microsoft"])
+        ):not(#main *):not([role="row"] *) {
+          display: none !important;
+          height: 0 !important;
+          max-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
         }
       `;
       (document.head || document.documentElement).appendChild(style);
