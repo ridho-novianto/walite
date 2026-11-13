@@ -5,6 +5,14 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2026-11-13
+
+### Fixed
+- **Windows Taskbar Application Icon ("logo di taskbar hilang lagi")**:
+  - **AppUserModelID Explicit Binding**: Registered the explicit application identity `id.my.vianto06.walite` via `SetCurrentProcessExplicitAppUserModelID` on application startup so the Windows 11 Taskbar correctly maps the running window to the Walite app instead of showing an unlinked, generic white placeholder icon.
+  - **Win32 Shell Cache Invalidation**: Called `SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL)` at process launch to force Windows Explorer and the Taskbar to flush stale icon caches and reload the application icon immediately.
+  - **Native `WM_SETICON` HWND Dispatch**: Dispatched `WM_SETICON` (`ICON_BIG` & `ICON_SMALL`) with the PE module's embedded icon (`LoadIconW(h_instance, 1)`) directly to the window's HWND, and initialized window and tray icons with `Image::from_app_icon_resource(128)`.
+
 ## [0.1.10] - 2026-11-13
 
 ### Fixed

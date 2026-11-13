@@ -93,10 +93,29 @@ fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn init_windows_app_identity() {
+    use std::os::windows::ffi::OsStrExt;
+    const APP_ID: &str = "id.my.vianto06.walite";
+    let wide_id: Vec<u16> = std::ffi::OsStr::new(APP_ID).encode_wide().chain(Some(0)).collect();
+    unsafe {
+        #[link(name = "shell32")]
+        extern "system" {
+            fn SetCurrentProcessExplicitAppUserModelID(AppID: *const u16) -> i32;
+            fn SHChangeNotify(wEventId: i32, uFlags: u32, dwItem1: *const std::ffi::c_void, dwItem2: *const std::ffi::c_void);
+        }
+        let _ = SetCurrentProcessExplicitAppUserModelID(wide_id.as_ptr());
+        const SHCNE_ASSOCCHANGED: i32 = 0x08000000;
+        const SHCNF_IDLIST: u32 = 0x0000;
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, std::ptr::null(), std::ptr::null());
+    }
+}
+
 fn main() {
     #[cfg(target_os = "windows")]
     {
         std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", BROWSER_ARGS);
+        init_windows_app_identity();
     }
 
     tauri::Builder::default()
@@ -149,7 +168,16 @@ fn main() {
                     .spawn();
             }
 
-            if let Some(icon) = app.default_window_icon() {
+            #[cfg(target_os = "windows")]
+            let app_icon = tauri::image::Image::from_app_icon_resource(128)
+                .or_else(|_| tauri::image::Image::from_app_icon_resource(32))
+                .ok();
+            #[cfg(not(target_os = "windows"))]
+            let app_icon: Option<tauri::image::Image<'static>> = None;
+
+            let final_icon = app_icon.as_ref().or_else(|| app.default_window_icon());
+
+            if let Some(icon) = final_icon {
                 builder = builder.icon(icon.clone())?;
             }
 
@@ -230,6 +258,31 @@ fn main() {
             let window = builder.build()?;
             let _ = window.show();
 
+            if let Some(icon) = final_icon {
+                let _ = window.set_icon(icon.clone());
+            }
+
+            #[cfg(target_os = "windows")]
+            if let Ok(hwnd) = window.hwnd() {
+                unsafe {
+                    #[link(name = "user32")]
+                    extern "system" {
+                        fn GetModuleHandleW(lpModuleName: *const u16) -> isize;
+                        fn LoadIconW(hInstance: isize, lpIconName: *const u16) -> isize;
+                        fn SendMessageW(hWnd: *mut std::ffi::c_void, Msg: u32, wParam: usize, lParam: isize) -> isize;
+                    }
+                    let h_instance = GetModuleHandleW(std::ptr::null());
+                    let h_icon = LoadIconW(h_instance, 1 as *const u16);
+                    if h_icon != 0 {
+                        const WM_SETICON: u32 = 0x0080;
+                        const ICON_SMALL: usize = 0;
+                        const ICON_BIG: usize = 1;
+                        SendMessageW(hwnd.0, WM_SETICON, ICON_BIG, h_icon);
+                        SendMessageW(hwnd.0, WM_SETICON, ICON_SMALL, h_icon);
+                    }
+                }
+            }
+
             // System tray setup
             let open_item = MenuItem::with_id(app, "open", "Buka Walite", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
@@ -267,7 +320,7 @@ fn main() {
                     }
                 });
 
-            if let Some(icon) = app.default_window_icon() {
+            if let Some(icon) = final_icon {
                 tray_builder = tray_builder.icon(icon.clone());
             }
 
