@@ -312,8 +312,11 @@
     }
   }
 
-  // Permanently Remove Desktop Upsell Banner
+  // Permanently Remove Desktop Upsell Banner (ONLY inside #pane-side when logged in)
   function removeDesktopUpsell() {
+    const paneSide = document.getElementById('pane-side');
+    if (!paneSide) return;
+
     const selectors = [
       'span[data-icon="windows"]',
       'span[data-icon="microsoft"]',
@@ -323,9 +326,9 @@
       '[data-testid*="banner"]',
       '[data-testid*="upsell"]'
     ];
-    document.querySelectorAll(selectors.join(',')).forEach((el) => {
+    paneSide.querySelectorAll(selectors.join(',')).forEach((el) => {
       let p = el;
-      for (let i = 0; i < 6 && p; i++) {
+      for (let i = 0; i < 5 && p && p !== paneSide; i++) {
         if (p.textContent && (p.textContent.includes('Dapatkan WhatsApp') || p.textContent.includes('Get WhatsApp') || p.textContent.includes('WhatsApp untuk Windows') || p.textContent.includes('WhatsApp for Windows'))) {
           p.style.setProperty('display', 'none', 'important');
           p.style.setProperty('height', '0', 'important');
@@ -341,24 +344,21 @@
     });
 
     try {
-      const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(paneSide, NodeFilter.SHOW_TEXT);
       let node;
       while ((node = walker.nextNode())) {
         const val = node.nodeValue;
         if (val && (val.includes('Dapatkan WhatsApp') || val.includes('Get WhatsApp') || val.includes('WhatsApp untuk Windows') || val.includes('WhatsApp for Windows'))) {
           let p = node.parentElement;
-          for (let i = 0; i < 6 && p; i++) {
-            if (p.parentElement && (p.parentElement.id === 'pane-side' || p.getAttribute('role') === 'alert' || p.querySelector('a') || p.clientHeight > 0)) {
-              p.style.setProperty('display', 'none', 'important');
-              p.style.setProperty('height', '0', 'important');
-              p.style.setProperty('max-height', '0', 'important');
-              p.style.setProperty('margin', '0', 'important');
-              p.style.setProperty('padding', '0', 'important');
-              p.style.setProperty('overflow', 'hidden', 'important');
-              p.style.setProperty('pointer-events', 'none', 'important');
-              break;
-            }
-            p = p.parentElement;
+          for (let i = 0; i < 5 && p && p !== paneSide; i++) {
+            p.style.setProperty('display', 'none', 'important');
+            p.style.setProperty('height', '0', 'important');
+            p.style.setProperty('max-height', '0', 'important');
+            p.style.setProperty('margin', '0', 'important');
+            p.style.setProperty('padding', '0', 'important');
+            p.style.setProperty('overflow', 'hidden', 'important');
+            p.style.setProperty('pointer-events', 'none', 'important');
+            break;
           }
         }
       }

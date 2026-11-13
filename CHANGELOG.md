@@ -5,6 +5,12 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-11-13
+
+### Fixed
+- **Scoped Hover Unblur per Contact**: Fixed hover unblur accidentally unblurring all contacts simultaneously in the chat list. Removed overly broad container matching so hovering cursor now only unblurs that specific contact's row (profile picture, name, snippet) or the specific element hovered, keeping other contacts securely blurred.
+- **QR Code Disappearing Bug**: Fixed QR code / login screen disappearing after loading. Scoped banner removal strictly to `#pane-side` so that landing page elements, login cards, and the QR code are never affected or hidden before login.
+
 ## [0.1.7] - 2026-11-13
 
 ### Fixed
