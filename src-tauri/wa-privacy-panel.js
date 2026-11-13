@@ -1,4 +1,4 @@
-/* Walite Privacy */
+/* WaLite Privacy */
 (function () {
   'use strict';
   if (window.__WALITE_INITIALIZED__) return;
@@ -146,7 +146,7 @@
     const cd = el('div', 'wl-lock-card');
     const ic = el('div', 'wl-lock-icon');
     ic.appendChild(createSvg('M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.66 0 3 1.34 3 3v2h1v5H8v-5h1v-2c0-1.66 1.34-3 3-3zm-1 5h2v-2c0-.55-.45-1-1-1s-1 .45-1 1v2z'));
-    cd.append(ic, el('div', 'wl-lock-title', 'Walite Terkunci'));
+    cd.append(ic, el('div', 'wl-lock-title', 'WaLite Terkunci'));
     cd.appendChild(el('div', 'wl-lock-desc', state.hasPassword
       ? 'Masukkan kata sandi untuk melanjutkan sesi WhatsApp Web.'
       : 'Layar privasi aktif. Klik tombol di bawah untuk membuka kunci.'));
@@ -282,10 +282,10 @@
   function showAboutDialog() {
     const mod = el('div', 'wl-modal-overlay');
     const cd = el('div', 'wl-modal-card');
-    cd.append(el('div', 'wl-modal-title', 'Tentang Walite'));
+    cd.append(el('div', 'wl-modal-title', 'Tentang WaLite'));
 
     const bd = el('div', 'wl-modal-body');
-    const p1 = el('p', '', 'Walite v0.1.12');
+    const p1 = el('p', '', 'WaLite v0.1.13');
     p1.style.fontWeight = '600';
     p1.style.color = '#e9edef';
     bd.appendChild(p1);
@@ -314,7 +314,7 @@
     const root = el('div');
     root.id = 'wl-root-container';
     const shieldBtn = el('div', 'wl-shield-btn');
-    shieldBtn.title = 'Walite Privacy Panel (Alt+Z)';
+    shieldBtn.title = 'WaLite Privacy Panel (Alt+Z)';
     shieldBtn.appendChild(createSvg('M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'));
     shieldBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -328,7 +328,7 @@
     panel.addEventListener('click', (e) => { e.stopPropagation(); });
 
     const header = el('div', 'wl-panel-header');
-    header.appendChild(el('span', '', 'Walite Privacy'));
+    header.appendChild(el('span', '', 'WaLite Privacy'));
 
     const headerActions = el('div', 'wl-panel-header-actions');
     const hideBtn = el('button', 'wl-panel-btn-icon', '–');
@@ -414,7 +414,7 @@
     const setPwLink = el('button', 'wl-link-action', 'Set Lock Screen Password');
     setPwLink.addEventListener('click', () => showPasswordDialog());
     body.appendChild(setPwLink);
-    const aboutLink = el('button', 'wl-link-about', 'About Walite');
+    const aboutLink = el('button', 'wl-link-about', 'About WaLite');
     aboutLink.addEventListener('click', () => showAboutDialog());
     body.appendChild(aboutLink);
 

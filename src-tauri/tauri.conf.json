@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Walite",
-  "version": "0.1.12",
+  "productName": "WaLite",
+  "version": "0.1.13",
   "identifier": "id.my.vianto06.walite",
   "build": {
     "frontendDist": "../src"
@@ -14,7 +14,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -24,13 +24,21 @@
     ],
     "copyright": "Copyright © 2026 Ridho Novianto",
     "publisher": "Ridho Novianto",
-    "shortDescription": "Lightweight WhatsApp Web wrapper for Windows",
-    "longDescription": "Lightweight, secure, and privacy-focused WhatsApp Web wrapper for Windows built with Tauri v2.",
+    "shortDescription": "Lightweight WhatsApp Web wrapper for desktop",
+    "longDescription": "Lightweight, secure, and privacy-focused WhatsApp Web wrapper for Windows and Linux built with Tauri v2.",
     "license": "MIT",
     "licenseFile": "../LICENSE",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37",
+          "libayatana-appindicator3-1"
+        ]
       }
     }
   }

@@ -1,7 +1,7 @@
 {
   "name": "walite",
-  "version": "0.1.12",
-  "description": "Lightweight, secure, and privacy-focused WhatsApp Web wrapper for Windows",
+  "version": "0.1.13",
+  "description": "Lightweight, secure, and privacy-focused WhatsApp Web wrapper for Windows and Linux",
   "author": "Ridho Novianto",
   "license": "MIT",
   "repository": {

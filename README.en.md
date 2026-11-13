@@ -1,19 +1,19 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="Walite Logo" width="128" height="128" />
+<img src="assets/logo.png" alt="WaLite Logo" width="128" height="128" />
 
-# Walite
+# WaLite
 
-<p><strong>Lightweight, Secure & Privacy-Focused WhatsApp Web Wrapper for Windows 11</strong></p>
+<p><strong>Lightweight, Secure & Privacy-Focused WhatsApp Web Wrapper for Windows & Linux</strong></p>
 
 </div>
 
-Walite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tailored for Windows 11 and Windows 10 (64-bit), built with Tauri v2, Rust, and the Microsoft Edge WebView2 runtime. It is designed to minimize resource consumption, maintain persistent sessions in an isolated directory, and offer client-side visual privacy tools and a screen locker.
+WaLite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tailored for Windows and Linux, built with Tauri v2, Rust, and native webview runtimes (Microsoft Edge WebView2 on Windows, WebKitGTK on Linux). It is designed to minimize resource consumption, maintain persistent sessions in an isolated directory, and offer client-side visual privacy tools and a screen locker.
 
 ## Highlights
 
 - **Lean & Efficient**: Native Rust core uses ~6.7 MB Private Working Set (~460 MB total idle with WebView2 runtime), optimized with `--renderer-process-limit=2`.
-- **Persistent Session Storage**: Dedicated directory at `%LocalAppData%\id.my.vianto06.walite\EBWebView` ensures login credentials survive restarts, updates, and rebuilds.
+- **Persistent Session Storage**: Dedicated directory (`%LocalAppData%\id.my.vianto06.walite\EBWebView` on Windows, `~/.local/share/id.my.vianto06.walite` on Linux) ensures login credentials survive restarts, updates, and rebuilds.
 - **Single Instance**: Opening a duplicate executable seamlessly focuses the existing window without creating redundant processes.
 - **System Tray Integration**: Closing the window (X) minimizes to tray, preserving WebSocket connections and incoming notifications. Full exit is available via tray right-click "Keluar".
 - **Navigation Isolation**: Webview navigation is strictly locked to `https://web.whatsapp.com`. External links open via the user's default browser.
@@ -22,25 +22,38 @@ Walite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tail
 
 ## System Requirements
 
-- Windows 11 or Windows 10 (64-bit, 1809+).
-- Microsoft Edge WebView2 Runtime.
-- No administrator privileges required (per-user NSIS installation).
+- **Windows**: Windows 11 or Windows 10 (64-bit, 1809+) with WebView2 Runtime.
+- **Linux**: Any modern Linux distribution (Arch Linux, Debian, Ubuntu, Fedora, openSUSE) with WebKitGTK.
 
 ## Installation
 
-Download `Walite_0.1.12_x64-setup.exe` (~1.16 MB) from [Releases](https://github.com/ridho-novianto/walite/releases). Note that Windows SmartScreen may show an unverified publisher notice because this open-source build is not digitally code-signed. Upgrading from a previous version can be done seamlessly by running the installer directly without uninstalling.
+### Windows
+Download `WaLite_0.1.13_x64-setup.exe` (~1.16 MB) from [Releases](https://github.com/ridho-novianto/walite/releases). Note that Windows SmartScreen may show an unverified publisher notice because this open-source build is not digitally code-signed. Upgrading from a previous version can be done seamlessly by running the installer directly without uninstalling.
+
+### Linux
+1. **Universal AppImage (Arch, Fedora, Debian/Ubuntu, openSUSE):**
+   ```bash
+   chmod +x WaLite_0.1.13_amd64.AppImage
+   ./WaLite_0.1.13_amd64.AppImage
+   ```
+2. **Debian Package (`.deb`):**
+   ```bash
+   sudo dpkg -i walite_0.1.13_amd64.deb
+   ```
 
 ## Building from Source
 
-```powershell
+```bash
 git clone https://github.com/ridho-novianto/walite.git
 cd walite
 npm install
 npm run tauri build
 ```
 Build outputs:
-- Binary: `src-tauri/target/release/walite.exe` (~3.24 MB)
-- Installer: `src-tauri/target/release/bundle/nsis/Walite_0.1.12_x64-setup.exe` (~1.16 MB)
+- Windows Executable: `src-tauri/target/release/walite.exe` (~3.24 MB)
+- Windows Installer: `src-tauri/target/release/bundle/nsis/WaLite_0.1.13_x64-setup.exe` (~1.16 MB)
+- Linux AppImage: `src-tauri/target/release/bundle/appimage/WaLite_0.1.13_amd64.AppImage` (~12 MB)
+- Linux Debian: `src-tauri/target/release/bundle/deb/walite_0.1.13_amd64.deb` (~10 MB)
 
 ## Updating Selectors
 

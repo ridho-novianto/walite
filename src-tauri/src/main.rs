@@ -16,14 +16,30 @@ const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate,Hid
     --disable-backgrounding-occluded-windows";
 
 fn get_persistent_data_dir() -> PathBuf {
-    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-        PathBuf::from(local_app_data)
-            .join("id.my.vianto06.walite")
-            .join("EBWebView")
-    } else {
-        std::env::temp_dir()
-            .join("id.my.vianto06.walite")
-            .join("EBWebView")
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            PathBuf::from(local_app_data)
+                .join("id.my.vianto06.walite")
+                .join("EBWebView")
+        } else {
+            std::env::temp_dir()
+                .join("id.my.vianto06.walite")
+                .join("EBWebView")
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
+            PathBuf::from(xdg).join("id.my.vianto06.walite")
+        } else if let Ok(home) = std::env::var("HOME") {
+            PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("id.my.vianto06.walite")
+        } else {
+            std::env::temp_dir().join("id.my.vianto06.walite")
+        }
     }
 }
 
@@ -49,7 +65,9 @@ fn open_in_default_browser(url: &str) {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = open::that_detached(url);
+        let _ = std::process::Command::new("xdg-open")
+            .arg(url)
+            .spawn();
     }
 }
 
@@ -151,7 +169,7 @@ fn main() {
             let app_handle = app.handle().clone();
 
             let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(main_url))
-                .title("Walite")
+                .title("WaLite")
                 .inner_size(1024.0, 768.0)
                 .min_inner_size(680.0, 500.0)
                 .data_directory(data_dir)
@@ -303,7 +321,7 @@ fn main() {
             }
 
             // System tray setup
-            let open_item = MenuItem::with_id(app, "open", "Buka Walite", true, None::<&str>)?;
+            let open_item = MenuItem::with_id(app, "open", "Buka WaLite", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&open_item, &quit_item])?;
 
@@ -354,5 +372,5 @@ fn main() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running Walite application");
+        .expect("error while running WaLite application");
 }

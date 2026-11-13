@@ -2,19 +2,19 @@
 
 <img src="assets/logo.png" alt="Walite Logo" width="128" height="128" />
 
-# WALITE
-### Lightweight, Secure & Privacy-Focused WhatsApp Web Wrapper for Windows 11
+# WaLite
+### Lightweight, Secure & Privacy-Focused WhatsApp Web Wrapper for Windows & Linux
 
 [![Tauri Version](https://img.shields.io/badge/Tauri-v2.12-24C8DB?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-1.98%2B-DEA584?style=for-the-badge&logo=rust&logoColor=black)](https://www.rust-lang.org)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010%20(x64)-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://microsoft.com/windows)
-[![Engine](https://img.shields.io/badge/Engine-Microsoft%20WebView2-008AD7?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://developer.microsoft.com/microsoft-edge/webview2/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010%20%7C%20Linux-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ridho-novianto/walite/releases)
+[![Engine](https://img.shields.io/badge/Engine-WebView2%20%7C%20WebKitGTK-008AD7?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/ridho-novianto/walite/releases)
 [![Binary Size](https://img.shields.io/badge/Binary-3.24%20MB-success?style=for-the-badge)](https://github.com/ridho-novianto/walite/releases)
-[![Installer Size](https://img.shields.io/badge/Installer-1.14%20MB-4CAF50?style=for-the-badge)](https://github.com/ridho-novianto/walite/releases)
+[![Installer Size](https://img.shields.io/badge/Installer-1.16%20MB-4CAF50?style=for-the-badge)](https://github.com/ridho-novianto/walite/releases)
 [![License](https://img.shields.io/badge/License-MIT-34937F?style=for-the-badge)](LICENSE)
 
 <p align="center">
-  Aplikasi desktop wrapper WhatsApp Web resmi untuk Windows 11/10 yang dibangun di atas <b>Tauri v2</b> dan <b>Rust</b>. Dirancang secara presisi untuk meminimalkan beban memori (RAM), menjaga sesi login tetap permanen, serta dilengkapi suite proteksi privasi visual (CSS-only blur) dan pengunci layar mandiri (PBKDF2 SHA-256).
+  Aplikasi desktop wrapper WhatsApp Web resmi untuk <b>Windows</b> dan <b>Linux</b> yang dibangun di atas <b>Tauri v2</b> dan <b>Rust</b>. Dirancang secara presisi untuk meminimalkan beban memori (RAM), menjaga sesi login tetap permanen, serta dilengkapi suite proteksi privasi visual (CSS-only blur) dan pengunci layar mandiri (PBKDF2 SHA-256).
 </p>
 
 ---
@@ -167,28 +167,42 @@ walite/
 
 ### Mengunduh Installer Resmi
 
-1. Unduh installer setup terbaru (`Walite_0.1.12_x64-setup.exe`) dari [GitHub Releases](https://github.com/ridho-novianto/walite/releases).
+#### Windows
+1. Unduh installer setup terbaru (`WaLite_0.1.13_x64-setup.exe`) dari [GitHub Releases](https://github.com/ridho-novianto/walite/releases).
 2. Jalankan berkas installer.
-3. Aplikasi dipasang ke direktori pengguna lokal (`%LocalAppData%\Programs\Walite`) tanpa memerlukan izin Administrator.
-4. **Pembaruan Langsung (In-Place Upgrade):** Jika sebelumnya Anda telah memasang versi lama (misal v0.1.0 s.d. v0.1.11), cukup unduh dan jalankan installer versi baru. Aplikasi akan langsung ter-update secara otomatis tanpa perlu melakukan uninstall dan tanpa kehilangan sesi login WhatsApp.
+3. Aplikasi dipasang ke direktori pengguna lokal (`%LocalAppData%\Programs\WaLite`) tanpa memerlukan izin Administrator.
+4. **Pembaruan Langsung (In-Place Upgrade):** Jika sebelumnya Anda telah memasang versi lama, cukup unduh dan jalankan installer versi baru. Aplikasi akan langsung ter-update secara otomatis tanpa perlu melakukan uninstall dan tanpa kehilangan sesi login WhatsApp.
 
 > **Catatan Windows SmartScreen:**  
-> Karena Walite merupakan proyek open-source independen yang belum menggunakan sertifikat penandatanganan kode berbayar (*Code Signing Certificate*), Windows SmartScreen mungkin menampilkan dialog proteksi:  
+> Karena WaLite merupakan proyek open-source independen yang belum menggunakan sertifikat penandatanganan kode berbayar (*Code Signing Certificate*), Windows SmartScreen mungkin menampilkan dialog proteksi:  
 > **Klik *"More info"* (Info selengkapnya) -> Pilih *"Run anyway"* (Tetap jalankan).**
+
+#### Linux (Arch Linux, Debian, Ubuntu, Fedora, openSUSE, dll)
+1. **Universal AppImage (Semua Distro Linux):**
+   ```bash
+   # Unduh WaLite_0.1.13_amd64.AppImage dari GitHub Releases
+   chmod +x WaLite_0.1.13_amd64.AppImage
+   ./WaLite_0.1.13_amd64.AppImage
+   ```
+2. **Paket Debian / Ubuntu (`.deb`):**
+   ```bash
+   sudo dpkg -i walite_0.1.13_amd64.deb
+   # atau
+   sudo apt install ./walite_0.1.13_amd64.deb
+   ```
 
 ---
 
 ## Kompilasi dari Source
 
 ### 1. Prasyarat Lingkungan
-- **Sistem Operasi**: Windows 11 / 10 (64-bit).
-- **Rust**: Versi stabil dengan target `x86_64-pc-windows-msvc`.
-- **C++ Build Tools**: Visual Studio Build Tools dengan workload *"Desktop development with C++"*.
+- **Windows**: Windows 11 / 10 (64-bit), Visual Studio C++ Build Tools, WebView2 Runtime.
+- **Linux**: GCC/Clang, `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`.
+- **Rust**: Versi stabil (1.78+).
 - **Node.js**: Versi LTS (v20+ atau v24+) dan npm.
-- **WebView2**: Microsoft Edge WebView2 Runtime.
 
 ### 2. Langkah-Langkah Kompilasi
-```powershell
+```bash
 # 1. Klon repositori
 git clone https://github.com/ridho-novianto/walite.git
 cd walite
@@ -196,17 +210,15 @@ cd walite
 # 2. Pasang dependensi JavaScript
 npm install
 
-# 3. Verifikasi kode dan analisa statis
-cargo check --manifest-path src-tauri/Cargo.toml
-cargo clippy --manifest-path src-tauri/Cargo.toml
-
-# 4. Bangun binary release dan installer NSIS
+# 3. Bangun binary release dan installer
 npm run tauri build
 ```
 
 Hasil kompilasi akan berada di:
-- Executable: `src-tauri/target/release/walite.exe`
-- Installer NSIS: `src-tauri/target/release/bundle/nsis/Walite_0.1.12_x64-setup.exe`
+- Windows Executable: `src-tauri/target/release/walite.exe`
+- Windows Installer NSIS: `src-tauri/target/release/bundle/nsis/WaLite_0.1.13_x64-setup.exe`
+- Linux AppImage: `src-tauri/target/release/bundle/appimage/WaLite_0.1.13_amd64.AppImage`
+- Linux Debian: `src-tauri/target/release/bundle/deb/walite_0.1.13_amd64.deb`
 
 ---
 

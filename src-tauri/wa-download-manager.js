@@ -1,4 +1,4 @@
-/* Walite Download Manager & Notification Enhancer */
+/* WaLite Download Manager & Notification Enhancer */
 (function () {
   'use strict';
   if (window.__WALITE_DM_INITIALIZED__) return;
@@ -105,7 +105,7 @@
           statusEl.textContent = 'Penyimpanan dibatalkan.';
           return false;
         }
-        console.warn('[Walite] SaveAs fallback:', e);
+        console.warn('[WaLite] SaveAs fallback:', e);
         statusEl.textContent = 'Mencoba cara penyimpanan alternatif...';
       }
     }

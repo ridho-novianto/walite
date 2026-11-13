@@ -1,9 +1,22 @@
 # Changelog
 
-All notable changes to Walite will be documented in this file.
+All notable changes to WaLite will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.13] - 2026-11-13
+
+### Added
+- **Cross-Platform Linux Native Support (Arch Linux, Debian, Ubuntu, Fedora, openSUSE)**:
+  - **Universal AppImage & Debian Packaging**: Configured bundle targets for native Linux `.AppImage` (standalone portable binary for Arch, Fedora, openSUSE, Debian/Ubuntu) and `.deb` (Debian, Ubuntu, Linux Mint). Both packages consume native WebKitGTK without heavy containerization overhead (~12 MB installer, ~40-80 MB RAM).
+  - **XDG Session Persistence**: Implemented `get_persistent_data_dir()` for Linux adhering to the XDG Base Directory specification (`$XDG_DATA_HOME/id.my.vianto06.walite` or `~/.local/share/id.my.vianto06.walite`), guaranteeing WhatsApp login sessions, IndexedDB, and cookies persist permanently across system reboots.
+  - **Desktop External Browser Integration**: Implemented `xdg-open` handling for external hyperlinks on Linux.
+  - **Automated Multi-OS Release Pipeline**: Configured GitHub Actions CI/CD matrix workflow (`.github/workflows/release.yml`) to automatically compile native Windows (`.exe`) and Linux (`.AppImage` + `.deb`) installers concurrently on tag push.
+
+### Changed
+- **Official Branding Update ("Walite" -> "WaLite")**:
+  - Rebranded the product name to **WaLite** (capital 'W' and capital 'L') across `tauri.conf.json`, window titles, system tray menus, installer manifests, and in-app privacy dialogs.
 
 ## [0.1.12] - 2026-11-13
 
