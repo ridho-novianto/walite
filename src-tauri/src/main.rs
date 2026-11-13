@@ -10,7 +10,7 @@ use tauri::{
 use tauri_plugin_opener::OpenerExt;
 
 const TARGET_URL: &str = "https://web.whatsapp.com";
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate \
+const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate,HideCursorWhileTyping \
     --disable-background-networking \
     --disable-default-apps \
     --disable-extensions \
@@ -38,7 +38,31 @@ fn is_safe_external_scheme(scheme: &str) -> bool {
 }
 
 fn is_allowed_internal_url(url: &Url) -> bool {
-    url.scheme() == "https" && url.host_str() == Some("web.whatsapp.com")
+    (url.scheme() == "https" && url.host_str() == Some("web.whatsapp.com"))
+        || (url.scheme() == "blob" && url.as_str().starts_with("blob:https://web.whatsapp.com/"))
+        || url.as_str() == "about:blank"
+}
+
+fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
+    let mut target = dir.join(file_name);
+    if !target.exists() {
+        return target;
+    }
+    let p = std::path::Path::new(file_name);
+    let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("download");
+    let ext = p.extension().and_then(|s| s.to_str());
+    let mut counter = 1;
+    loop {
+        let candidate = match ext {
+            Some(e) => format!("{} ({}).{}", stem, counter, e),
+            None => format!("{} ({})", stem, counter),
+        };
+        target = dir.join(candidate);
+        if !target.exists() {
+            return target;
+        }
+        counter += 1;
+    }
 }
 
 fn main() {
@@ -80,6 +104,8 @@ fn main() {
                 .min_inner_size(680.0, 500.0)
                 .data_directory(data_dir)
                 .additional_browser_args(BROWSER_ARGS)
+                .disable_drag_drop_handler()
+                .drag_and_drop(true)
                 .initialization_script(include_str!("../wa-privacy-panel.js"));
 
             #[cfg(not(debug_assertions))]
@@ -103,6 +129,9 @@ fn main() {
             // New window handler (e.g. window.open, target="_blank")
             let app_handle_window = app_handle.clone();
             builder = builder.on_new_window(move |url, _features| {
+                if is_allowed_internal_url(&url) {
+                    return NewWindowResponse::Allow;
+                }
                 if is_safe_external_scheme(url.scheme()) {
                     let _ = app_handle_window.opener().open_url(url.as_str(), None::<&str>);
                 }
@@ -113,11 +142,27 @@ fn main() {
             let app_handle_dl = app_handle.clone();
             builder = builder.on_download(move |_webview, event| {
                 match event {
-                    DownloadEvent::Requested { url: _, destination } => {
+                    DownloadEvent::Requested { url, destination } => {
                         if let Ok(dl_dir) = app_handle_dl.path().download_dir() {
-                            if let Some(file_name) = destination.file_name().map(|n| n.to_os_string()) {
-                                *destination = dl_dir.join(file_name);
-                            }
+                            let file_name = destination
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .filter(|s| !s.is_empty())
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| {
+                                    url.path_segments()
+                                        .and_then(|mut s| s.next_back())
+                                        .filter(|s| !s.is_empty() && s.contains('.'))
+                                        .map(|s| s.to_string())
+                                        .unwrap_or_else(|| {
+                                            let now = std::time::SystemTime::now()
+                                                .duration_since(std::time::UNIX_EPOCH)
+                                                .unwrap_or_default()
+                                                .as_secs();
+                                            format!("walite_download_{}.bin", now)
+                                        })
+                                });
+                            *destination = get_unique_download_path(&dl_dir, &file_name);
                         }
                         true
                     }

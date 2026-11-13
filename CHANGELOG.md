@@ -5,6 +5,14 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-11-13
+
+### Fixed
+- Fixed file download and saving: allowed `blob:https://web.whatsapp.com/` and internal URLs in navigation guards and new window handlers, enabling seamless downloads of images, videos, audio/voice notes, and documents directly into the system Downloads folder.
+- Fixed duplicate download collisions with automatic unique numbering (`file (1).ext`) to ensure downloads never fail or silently abort.
+- Fixed invisible mouse cursor: disabled Chromium's `HideCursorWhileTyping` feature flag in WebView2 to prevent Windows pointer desynchronization bug.
+- Fixed native HTML5 file drag-and-drop: enabled `.disable_drag_drop_handler()` and `.drag_and_drop(true)` on WebView2 window builder so users can drag and drop images, PDFs, and files directly from Windows File Explorer into WhatsApp chat just like WhatsApp Desktop.
+
 ## [0.1.1] - 2026-11-13
 
 ### Changed

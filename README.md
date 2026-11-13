@@ -165,10 +165,10 @@ walite/
 
 ### Mengunduh Installer Resmi
 
-1. Unduh installer setup terbaru (`Walite_0.1.1_x64-setup.exe`) dari [GitHub Releases](https://github.com/ridho-novianto/walite/releases).
+1. Unduh installer setup terbaru (`Walite_0.1.2_x64-setup.exe`) dari [GitHub Releases](https://github.com/ridho-novianto/walite/releases).
 2. Jalankan berkas installer.
 3. Aplikasi dipasang ke direktori pengguna lokal (`%LocalAppData%\Programs\Walite`) tanpa memerlukan izin Administrator.
-4. **Pembaruan Langsung (In-Place Upgrade):** Jika sebelumnya Anda telah memasang versi lama (misal v0.1.0), cukup unduh dan jalankan installer versi baru. Aplikasi akan langsung ter-update secara otomatis tanpa perlu melakukan uninstall dan tanpa kehilangan sesi login WhatsApp.
+4. **Pembaruan Langsung (In-Place Upgrade):** Jika sebelumnya Anda telah memasang versi lama (misal v0.1.0 atau v0.1.1), cukup unduh dan jalankan installer versi baru. Aplikasi akan langsung ter-update secara otomatis tanpa perlu melakukan uninstall dan tanpa kehilangan sesi login WhatsApp.
 
 > **Catatan Windows SmartScreen:**  
 > Karena Walite merupakan proyek open-source independen yang belum menggunakan sertifikat penandatanganan kode berbayar (*Code Signing Certificate*), Windows SmartScreen mungkin menampilkan dialog proteksi:  
@@ -204,7 +204,7 @@ npm run tauri build
 
 Hasil kompilasi akan berada di:
 - Executable: `src-tauri/target/release/walite.exe`
-- Installer NSIS: `src-tauri/target/release/bundle/nsis/Walite_0.1.1_x64-setup.exe`
+- Installer NSIS: `src-tauri/target/release/bundle/nsis/Walite_0.1.2_x64-setup.exe`
 
 ---
 
