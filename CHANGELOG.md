@@ -5,6 +5,21 @@ All notable changes to WaLite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14] - 2026-11-13
+
+### Fixed
+- **Linux Video Playback & Status Viewing Freeze ("plai video freeze, statu")**:
+  - Automatically configured `GST_VAAPI_ALL_DRIVERS_DISABLE=1` to prevent GStreamer hardware decoders (VA-API / NVDEC on NVIDIA) from deadlocking with WebKitGTK when DMA-BUF zero-copy buffer sharing is disabled.
+  - Added `gstreamer1.0-plugins-ugly` to Debian package dependencies alongside `gst-plugins-bad` and `gst-libav` to guarantee full H.264/AVC1 video and AAC audio software decoding.
+  - Injected an active HTML5 video enhancer that configures `playsinline` / `webkit-playsinline` on video elements in status and chats, and gracefully absorbs unhandled play promise rejections.
+  - Optimized CSS blur filters on media in `wa-privacy-panel.js` with `will-change: filter` and GPU layer promotion (`transform: translateZ(0)`) to eliminate CPU frame readback stalls on playing videos.
+- **Linux Chat Receiving Freezes ("nerima chat nge freeze")**:
+  - Replaced the intensive synchronous full-DOM `TreeWalker` scan and unthrottled `MutationObserver` in `wa-download-manager.js` with an idle-debounced, scoped observer targeting only `#side` / `#app` outside `#main`. Incoming chat message bubbles no longer trigger heavy DOM tree iterations.
+  - Fixed D-Bus notification timeout lockups on Linux: WebKitGTK's Web Notification bridge forwards icons to D-Bus (`org.freedesktop.Notifications`), which rejects base64 `data:` URIs and causes 25-second UI thread freezes. Inlined base64 icon data is now stripped on Linux while preserving full desktop notification title and message text.
+  - Polyfilled `window.chrome` runtime APIs for WebKitGTK to ensure WhatsApp Web's Chrome-specific initialization paths execute flawlessly with Chrome on Linux User-Agent.
+- **Cursor Performance Optimization**:
+  - Replaced universal `* { cursor: auto; }` rule with scoped selectors (`body, #app, #main`) to eliminate continuous cursor style recomputations on hover.
+
 ## [0.1.13] - 2026-11-13
 
 ### Added

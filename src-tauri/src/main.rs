@@ -146,6 +146,11 @@ fn main() {
         if std::env::var("__NV_DISABLE_EXPLICIT_SYNC").is_err() {
             std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1");
         }
+        // Force GStreamer to use robust software decoders (FFmpeg gst-libav) instead of
+        // deadlocking on GPU VA-API / NVDEC buffer sharing when DMA-BUF renderer is disabled
+        if std::env::var("GST_VAAPI_ALL_DRIVERS_DISABLE").is_err() {
+            std::env::set_var("GST_VAAPI_ALL_DRIVERS_DISABLE", "1");
+        }
     }
 
     tauri::Builder::default()

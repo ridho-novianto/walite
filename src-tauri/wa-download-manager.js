@@ -317,14 +317,28 @@
   // Brand Notifications as WaLite and set Logo Icon
   if ('Notification' in window) {
     const OriginalNotification = window.Notification;
+    const isLinux = typeof navigator !== 'undefined' && (/Linux|X11/i.test(navigator.userAgent) || /Linux/i.test(navigator.platform || ''));
     window.Notification = function (title, options) {
       options = options || {};
       const appTitle = title ? ('WaLite • ' + title) : 'WaLite';
-      if (!options.icon || options.icon.includes('whatsapp') || options.icon.includes('blob:')) {
-        options.icon = WALITE_ICON;
+      // On Linux WebKitGTK / D-Bus (org.freedesktop.Notifications),
+      // passing a base64 data URI violates FreeDesktop specs and causes D-Bus timeouts & UI freezes.
+      if (!isLinux) {
+        if (!options.icon || options.icon.includes('whatsapp') || options.icon.includes('blob:')) {
+          options.icon = WALITE_ICON;
+        }
+        options.badge = WALITE_ICON;
+      } else {
+        if (options.icon && (options.icon.startsWith('data:') || options.icon.startsWith('blob:'))) {
+          delete options.icon;
+        }
+        delete options.badge;
       }
-      options.badge = WALITE_ICON;
-      return new OriginalNotification(appTitle, options);
+      try {
+        return new OriginalNotification(appTitle, options);
+      } catch (err) {
+        console.warn('[WaLite] Notification dispatch error:', err);
+      }
     };
     Object.assign(window.Notification, OriginalNotification);
     window.Notification.prototype = OriginalNotification.prototype;
@@ -337,11 +351,13 @@
     }
   }
 
-  // Permanently Remove Desktop Upsell Banner across WhatsApp Web
+  // Safely Remove Desktop Upsell Banner across WhatsApp Web without freezing the UI thread
   function removeDesktopUpsell() {
-    // If not logged in yet (e.g. QR code page), don't remove QR code container
     const isLoginPage = document.querySelector('canvas[aria-label*="Scan"]') || document.querySelector('[data-testid="qrcode"]');
     if (isLoginPage) return;
+
+    const side = document.querySelector('#side') || document.querySelector('#app');
+    if (!side) return;
 
     const selectors = [
       'span[data-icon="windows"]',
@@ -352,7 +368,7 @@
       '[data-testid*="banner"]',
       '[data-testid*="upsell"]'
     ];
-    document.querySelectorAll(selectors.join(',')).forEach((el) => {
+    side.querySelectorAll(selectors.join(',')).forEach((el) => {
       if (el.closest('#main') || el.closest('[role="row"]') || el.closest('[data-testid="qrcode"]')) return;
       let p = el;
       for (let i = 0; i < 6 && p && p !== document.body && p !== document.documentElement; i++) {
@@ -379,40 +395,35 @@
         p = p.parentElement;
       }
     });
-
-    try {
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      let node;
-      while ((node = walker.nextNode())) {
-        const val = node.nodeValue;
-        if (
-          val &&
-          (val.includes('Dapatkan WhatsApp') ||
-            val.includes('Get WhatsApp') ||
-            val.includes('WhatsApp untuk Windows') ||
-            val.includes('WhatsApp for Windows'))
-        ) {
-          const parent = node.parentElement;
-          if (!parent || parent.closest('#main') || parent.closest('[role="row"]') || parent.closest('[data-testid="qrcode"]')) continue;
-          let p = parent;
-          for (let i = 0; i < 6 && p && p !== document.body && p !== document.documentElement; i++) {
-            p.style.setProperty('display', 'none', 'important');
-            p.style.setProperty('height', '0', 'important');
-            p.style.setProperty('max-height', '0', 'important');
-            p.style.setProperty('margin', '0', 'important');
-            p.style.setProperty('padding', '0', 'important');
-            p.style.setProperty('overflow', 'hidden', 'important');
-            p.style.setProperty('pointer-events', 'none', 'important');
-            break;
-          }
-        }
-      }
-    } catch (_) {}
   }
 
-  setInterval(removeDesktopUpsell, 1000);
+  // Debounce runner to prevent CPU thrashing when receiving rapid chats or status updates
+  let upsellDebounceTimer = null;
+  function scheduleRemoveDesktopUpsell() {
+    if (upsellDebounceTimer) return;
+    upsellDebounceTimer = setTimeout(() => {
+      upsellDebounceTimer = null;
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(removeDesktopUpsell, { timeout: 2000 });
+      } else {
+        removeDesktopUpsell();
+      }
+    }, 2500);
+  }
+
+  setInterval(removeDesktopUpsell, 5000);
   document.addEventListener('DOMContentLoaded', removeDesktopUpsell);
-  const obs = new MutationObserver(removeDesktopUpsell);
+  const obs = new MutationObserver((mutations) => {
+    // Only trigger if mutations happen outside the main chat message viewport
+    for (let i = 0; i < mutations.length; i++) {
+      const target = mutations[i].target;
+      if (target && target.closest && target.closest('#main')) {
+        continue;
+      }
+      scheduleRemoveDesktopUpsell();
+      break;
+    }
+  });
   if (document.body) obs.observe(document.body, { childList: true, subtree: true });
 
   // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
@@ -423,7 +434,7 @@
       style.id = 'wl-cursor-enhancer';
       style.textContent = `
         /* Enforce visible mouse pointer across WhatsApp Web & Chat (#main) */
-        * { cursor: auto; }
+        body, #app, #main { cursor: default; }
         [style*="cursor: none"], [style*="cursor:none"] { cursor: default !important; }
         #main,
         #main :is([role="row"], .message-in, .message-out, [data-testid*="msg"], .copyable-text, .selectable-text, [data-pre-plain-text]) {
@@ -469,6 +480,85 @@
       document.addEventListener('DOMContentLoaded', injectCursorStyle);
     }
     document.addEventListener('DOMContentLoaded', injectCursorStyle);
+  })();
+
+  // Polyfill window.chrome for WebKitGTK to ensure full compatibility with Chrome User-Agent
+  if (typeof window.chrome === 'undefined') {
+    window.chrome = {
+      app: {
+        isInstalled: false,
+        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
+      },
+      runtime: {
+        OnInstalledReason: {},
+        OnRestartRequiredReason: {},
+        PlatformArch: {},
+        PlatformNaclArch: {},
+        PlatformOs: {},
+        RequestUpdateCheckStatus: {}
+      },
+      loadTimes: function () {},
+      csi: function () {}
+    };
+  }
+
+  // Linux WebKitGTK Media & Video Status Enhancer:
+  // Ensures HTML5 videos, status playback, and voice notes decode smoothly without freezing the JS loop
+  (function initMediaEnhancer() {
+    function enhanceVideoElement(video) {
+      if (!video || video.__wl_enhanced) return;
+      video.__wl_enhanced = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      // Catch and absorb unhandled play promise rejections that would otherwise crash/freeze the event loop
+      const origPlay = video.play;
+      if (typeof origPlay === 'function') {
+        video.play = function () {
+          const res = origPlay.apply(this, arguments);
+          if (res && typeof res.catch === 'function') {
+            res.catch(() => {});
+          }
+          return res;
+        };
+      }
+    }
+
+    document.addEventListener(
+      'play',
+      function (e) {
+        if (e.target && e.target.tagName === 'VIDEO') {
+          enhanceVideoElement(e.target);
+        }
+      },
+      true
+    );
+
+    // Scan for status and chat video elements
+    const mediaObserver = new MutationObserver((mutations) => {
+      for (let i = 0; i < mutations.length; i++) {
+        const addedNodes = mutations[i].addedNodes;
+        for (let j = 0; j < addedNodes.length; j++) {
+          const node = addedNodes[j];
+          if (node.nodeType === 1) {
+            if (node.tagName === 'VIDEO') {
+              enhanceVideoElement(node);
+            } else if (typeof node.querySelectorAll === 'function') {
+              node.querySelectorAll('video').forEach(enhanceVideoElement);
+            }
+          }
+        }
+      }
+    });
+
+    if (document.body) {
+      mediaObserver.observe(document.body, { childList: true, subtree: true });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (document.body) mediaObserver.observe(document.body, { childList: true, subtree: true });
+      });
+    }
   })();
 
   // Linux & WebKitGTK drag-and-drop enhancer:
