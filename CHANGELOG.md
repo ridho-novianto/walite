@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Desktop External Browser Integration**: Implemented `xdg-open` handling for external hyperlinks on Linux.
   - **Automated Multi-OS Release Pipeline**: Configured GitHub Actions CI/CD matrix workflow (`.github/workflows/release.yml`) to automatically compile native Windows (`.exe`) and Linux (`.AppImage` + `.deb`) installers concurrently on tag push.
 
+### Fixed
+- **Linux Whitescreen on Reopen / Unminimize & Media Freezes**:
+  - Automatically configured `WEBKIT_DISABLE_DMABUF_RENDERER=1` and `__NV_DISABLE_EXPLICIT_SYNC=1` at process launch, preventing WebKitGTK 2.40+ DMA-BUF buffer sharing deadlocks with GPU drivers on Wayland and X11 that previously caused whitescreens upon reopening after window close (`Win+Q`) and hard lockups during status video viewing, multimedia playback, and image thumbnail compression.
+- **Missing Emojis on Linux**:
+  - Set modern Chrome on Linux User-Agent on WebKitGTK so WhatsApp Web serves standard web emoji sprites instead of failing when looking for Apple Color Emoji fonts.
+- **Linux Multimedia Codecs & Dependencies**:
+  - Added GStreamer codec suite (`gstreamer1.0-plugins-good`, `gstreamer1.0-plugins-bad`, `gstreamer1.0-libav`) to Debian package dependencies for out-of-the-box video and audio decoding.
+- **HTML5 Drag-and-Drop Event Propagation**:
+  - Injected global `dragover` / `dragenter` default prevention to stop WebKitGTK from attempting to navigate away when dragging files from Linux file managers (Nautilus, Dolphin), enabling clean drop operations into WhatsApp chats.
+
 ### Changed
 - **Official Branding Update ("Walite" -> "WaLite")**:
   - Rebranded the product name to **WaLite** (capital 'W' and capital 'L') across `tauri.conf.json`, window titles, system tray menus, installer manifests, and in-app privacy dialogs.

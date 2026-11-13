@@ -136,12 +136,26 @@ fn main() {
         init_windows_app_identity();
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        // Fix WebKitGTK DMA-BUF GPU crashes, blank/white screen on startup or resume,
+        // and deadlocks during video playback, status view, and canvas image compression
+        if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+        if std::env::var("__NV_DISABLE_EXPLICIT_SYNC").is_err() {
+            std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1");
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.unminimize();
                 let _ = window.set_focus();
+                #[cfg(target_os = "linux")]
+                let _ = window.request_redraw();
             }
         }))
         .plugin(tauri_plugin_opener::init())
@@ -181,6 +195,15 @@ fn main() {
             #[cfg(target_os = "windows")]
             {
                 builder = builder.drag_and_drop(false);
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                // Deliver standard Chrome on Linux User Agent so WhatsApp Web serves universal web emojis
+                // and unlocks standard modern web capabilities
+                builder = builder.user_agent(
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                );
             }
 
             #[cfg(target_os = "windows")]

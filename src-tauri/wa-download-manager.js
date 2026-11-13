@@ -470,4 +470,25 @@
     }
     document.addEventListener('DOMContentLoaded', injectCursorStyle);
   })();
+
+  // Linux & WebKitGTK drag-and-drop enhancer:
+  // Prevents WebKitGTK from navigating away when dropping files from Linux file managers,
+  // and allows WhatsApp Web's drop handlers to receive files seamlessly
+  window.addEventListener(
+    'dragover',
+    (e) => {
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+      e.preventDefault();
+    },
+    false
+  );
+  window.addEventListener(
+    'dragenter',
+    (e) => {
+      e.preventDefault();
+    },
+    false
+  );
 })();
