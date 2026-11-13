@@ -5,6 +5,15 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-11-13
+
+### Added
+- **Interactive Download Manager (Save As & Open)**: Added a dedicated in-app Download Manager (`wa-download-manager.js`) that intercepts in-memory decrypted blob downloads from WhatsApp Web (images, videos, audio, documents/PDFs) and presents an intuitive modal with **"Simpan Sebagai... (Save As)"** (powered by Windows native File System Access dialog) and **"Buka Berkas (Open)"** to open or preview files immediately.
+
+### Fixed
+- **Emoji Blur Immunity**: Fixed emojis being erroneously blurred and censored inside chat messages, reaction bubbles, contact names, and emoji pickers by strictly exempting emoji elements and removing overly broad image selectors.
+- **Hover-to-Reveal (Unblur) on Cursor Hover**: Fixed hover unblur functionality across all blurred elements. Moving the mouse cursor over profile pictures, message bubbles (including all text and children), contact names, preview snippets, and media will now smoothly and instantly unblur them.
+
 ## [0.1.3] - 2026-11-13
 
 ### Added

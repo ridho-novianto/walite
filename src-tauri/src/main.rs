@@ -106,7 +106,8 @@ fn main() {
                 .additional_browser_args(BROWSER_ARGS)
                 .disable_drag_drop_handler()
                 .drag_and_drop(true)
-                .initialization_script(include_str!("../wa-privacy-panel.js"));
+                .initialization_script(include_str!("../wa-privacy-panel.js"))
+                .initialization_script(include_str!("../wa-download-manager.js"));
 
             #[cfg(not(debug_assertions))]
             {
