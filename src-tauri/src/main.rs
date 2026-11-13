@@ -154,8 +154,6 @@ fn main() {
                 let _ = window.show();
                 let _ = window.unminimize();
                 let _ = window.set_focus();
-                #[cfg(target_os = "linux")]
-                let _ = window.request_redraw();
             }
         }))
         .plugin(tauri_plugin_opener::init())
