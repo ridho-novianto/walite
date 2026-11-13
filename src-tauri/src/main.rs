@@ -9,7 +9,7 @@ use tauri::{
 };
 
 const TARGET_URL: &str = "https://web.whatsapp.com";
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate,HideCursorWhileTyping \
+const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate,HideCursorWhileTyping,msSmartScreenProtection \
     --no-first-run \
     --disable-background-timer-throttling \
     --disable-renderer-backgrounding \
@@ -94,6 +94,11 @@ fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
 }
 
 fn main() {
+    #[cfg(target_os = "windows")]
+    {
+        std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", BROWSER_ARGS);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {

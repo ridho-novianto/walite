@@ -369,4 +369,42 @@
   document.addEventListener('DOMContentLoaded', removeDesktopUpsell);
   const obs = new MutationObserver(removeDesktopUpsell);
   if (document.body) obs.observe(document.body, { childList: true, subtree: true });
+
+  // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
+  (function initCursorEnhancer() {
+    function injectCursorStyle() {
+      if (document.getElementById('wl-cursor-enhancer')) return;
+      const style = document.createElement('style');
+      style.id = 'wl-cursor-enhancer';
+      style.textContent = `
+        /* Enforce visible mouse pointer across WhatsApp Web & Chat (#main) */
+        * { cursor: auto; }
+        [style*="cursor: none"], [style*="cursor:none"] { cursor: default !important; }
+        #main,
+        #main :is([role="row"], .message-in, .message-out, [data-testid*="msg"], .copyable-text, .selectable-text, [data-pre-plain-text]) {
+          cursor: default !important;
+        }
+        #main :is(button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"]) {
+          cursor: pointer !important;
+        }
+        #main footer :is([contenteditable="true"], [role="textbox"], input, textarea) {
+          cursor: text !important;
+        }
+        #pane-side {
+          cursor: default;
+        }
+        #pane-side :is([role="row"], [role="listitem"], [tabindex="-1"]) {
+          cursor: pointer !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    }
+
+    if (document.head || document.documentElement) {
+      injectCursorStyle();
+    } else {
+      document.addEventListener('DOMContentLoaded', injectCursorStyle);
+    }
+    document.addEventListener('DOMContentLoaded', injectCursorStyle);
+  })();
 })();

@@ -5,6 +5,13 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-11-13
+
+### Fixed
+- **Persistent Mouse Cursor Visibility in Chat ("muse ga muncul di chat")**:
+  - **Environment Level**: Set the `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` environment variable prior to WebView2 initialization with `--disable-features=HideCursorWhileTyping,msSmartScreenProtection`, preventing WebView2 from suppressing and failing to restore the mouse cursor when typing or switching focus in WhatsApp Web input fields.
+  - **DOM & CSS Level**: Enforced explicit default arrow pointer (`cursor: default !important`) over `#main` message bubbles, background, and selectable text, preventing dark-theme invisible black I-beam text cursors and prohibiting any `cursor: none` state. Buttons, emojis, attachments, and audio controls explicitly display `cursor: pointer !important`, while the compose box displays `cursor: text !important`.
+
 ## [0.1.8] - 2026-11-13
 
 ### Fixed
