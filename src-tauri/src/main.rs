@@ -121,6 +121,13 @@ fn main() {
                 .initialization_script(include_str!("../wa-privacy-panel.js"))
                 .initialization_script(include_str!("../wa-download-manager.js"));
 
+            #[cfg(target_os = "windows")]
+            {
+                let _ = std::process::Command::new("ie4uinit.exe")
+                    .arg("-show")
+                    .spawn();
+            }
+
             if let Some(icon) = app.default_window_icon() {
                 builder = builder.icon(icon.clone())?;
             }

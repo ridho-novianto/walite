@@ -5,6 +5,17 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-11-13
+
+### Fixed
+- **Hover Unblur Reliability**: Fixed CSS specificity collisions that prevented blurred profile pictures, messages, contact names, and media previews from unblurring on cursor hover. Hovering over any element or its chat list row now instantly and smoothly unblurs the content (`transition: filter .15s ease-in-out`).
+- **Profile Picture Blur on Contacts with Status**: Fixed contacts who posted a WhatsApp Status (story ring around avatar) failing to blur. Avatar selectors now target SVG `<image>`, status containers, and rings so all contact avatars remain consistently blurred unless hovered.
+- **Permanent Removal of "Dapatkan WhatsApp untuk Windows" Banner**: Completely eliminated the persistent promotional desktop banner from the chat list using both targeted CSS selectors (`span[data-icon*="whatsapp"]`, upsell containers) and dynamic DOM TreeWalker observation.
+- **Taskbar Icon Shell Refresh**: Added background Windows Shell notification (`ie4uinit.exe -show`) on application startup and clean-built PE resources to ensure the new circular "WL" logo displays accurately across the Windows taskbar and system tray.
+
+### Changed
+- **Fluent Download Experience (Anti-AI-Slop Redesign)**: Redesigned the "Unduh Berkas" dialog into a clean, modern Windows 11 Fluent aesthetic. Removed generic emojis, replacing them with crisp SVG vector icons (minimalist document badge with dynamic extension pill, download tray arrow, external link arrow), subtle frosted acrylic backdrop, and streamlined "Simpan Sebagai..." (native Windows File Picker) and "Buka Langsung" actions.
+
 ## [0.1.5] - 2026-11-13
 
 ### Added

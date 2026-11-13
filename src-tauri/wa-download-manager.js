@@ -15,16 +15,56 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  function getFileIcon(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️';
-    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) return '🎬';
-    if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'opus'].includes(ext)) return '🎵';
-    if (['pdf'].includes(ext)) return '📕';
-    if (['doc', 'docx'].includes(ext)) return '📘';
-    if (['xls', 'xlsx'].includes(ext)) return '📗';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '🗜️';
-    return '📄';
+  function createFileIconBadge(filename) {
+    const ext = (filename.includes('.') ? filename.split('.').pop() : 'FILE').slice(0, 4).toUpperCase();
+    const div = document.createElement('div');
+    div.style.cssText = 'width:42px;height:44px;background:rgba(0,168,132,0.14);border:1px solid rgba(0,168,132,0.3);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;';
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.style.cssText = 'width:18px;height:18px;fill:none;stroke:#00a884;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;';
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', '14 2 14 8 20 8');
+    icon.append(path, polyline);
+
+    const badge = document.createElement('span');
+    badge.textContent = ext;
+    badge.style.cssText = 'font-size:9px;font-weight:700;color:#00a884;letter-spacing:0.5px;margin-top:2px;line-height:1;';
+
+    div.append(icon, badge);
+    return div;
+  }
+
+  function createSaveSvg() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.style.cssText = 'width:16px;height:16px;fill:none;stroke:#111b21;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;';
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', '7 10 12 15 17 10');
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '12'); line.setAttribute('y1', '15');
+    line.setAttribute('x2', '12'); line.setAttribute('y2', '3');
+    svg.append(path, poly, line);
+    return svg;
+  }
+
+  function createOpenSvg() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.style.cssText = 'width:15px;height:15px;fill:none;stroke:#e9edef;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;';
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', '15 3 21 3 21 9');
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '10'); line.setAttribute('y1', '14');
+    line.setAttribute('x2', '21'); line.setAttribute('y2', '3');
+    svg.append(path, poly, line);
+    return svg;
   }
 
   let activeDialog = null;
@@ -56,11 +96,12 @@
         await writable.close();
         statusEl.style.color = TEAL;
         statusEl.textContent = '✓ Berkas berhasil disimpan!';
-        setTimeout(closeDialog, 1200);
+        setTimeout(closeDialog, 1000);
         return true;
       } catch (e) {
         btnSave.disabled = false;
         if (e.name === 'AbortError') {
+          statusEl.style.color = '#8696a0';
           statusEl.textContent = 'Penyimpanan dibatalkan.';
           return false;
         }
@@ -83,7 +124,7 @@
       }, 3000);
       statusEl.style.color = TEAL;
       statusEl.textContent = '✓ Unduhan dikirim ke browser!';
-      setTimeout(closeDialog, 1200);
+      setTimeout(closeDialog, 1000);
       return true;
     } catch (err) {
       statusEl.style.color = '#f15c6d';
@@ -102,62 +143,39 @@
 
     const card = document.createElement('div');
     card.className = 'wl-modal-card';
-    card.style.width = '360px';
-    card.style.maxWidth = '90vw';
+    card.style.cssText = 'width:340px;max-width:92vw;padding:18px 20px 16px;background:rgba(32,44,51,0.96);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.55);';
 
     const hdr = document.createElement('div');
-    hdr.style.display = 'flex';
-    hdr.style.alignItems = 'center';
-    hdr.style.justifyContent = 'space-between';
-    hdr.style.marginBottom = '12px';
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
 
     const title = document.createElement('div');
-    title.className = 'wl-modal-title';
+    title.style.cssText = 'font-size:14px;font-weight:600;color:#e9edef;letter-spacing:0.2px;';
     title.textContent = 'Unduh Berkas';
-    title.style.margin = '0';
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'wl-panel-btn-icon';
     closeBtn.textContent = '×';
-    closeBtn.style.fontSize = '18px';
+    closeBtn.style.cssText = 'background:none;border:none;font-size:18px;color:#8696a0;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;';
     closeBtn.addEventListener('click', closeDialog);
 
     hdr.append(title, closeBtn);
     card.appendChild(hdr);
 
     const fileBox = document.createElement('div');
-    fileBox.style.background = '#111b21';
-    fileBox.style.borderRadius = '8px';
-    fileBox.style.padding = '12px';
-    fileBox.style.marginBottom = '14px';
-    fileBox.style.display = 'flex';
-    fileBox.style.alignItems = 'center';
-    fileBox.style.gap = '10px';
-    fileBox.style.border = '1px solid #222e35';
+    fileBox.style.cssText = 'background:#111b21;border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:12px;border:1px solid #222e35;';
 
-    const iconEl = document.createElement('div');
-    iconEl.style.fontSize = '26px';
-    iconEl.textContent = getFileIcon(filename);
+    const iconEl = createFileIconBadge(filename);
 
     const infoEl = document.createElement('div');
-    infoEl.style.overflow = 'hidden';
-    infoEl.style.display = 'flex';
-    infoEl.style.flexDirection = 'column';
-    infoEl.style.gap = '2px';
+    infoEl.style.cssText = 'overflow:hidden;display:flex;flex-direction:column;gap:3px;flex:1;';
 
     const nameEl = document.createElement('div');
-    nameEl.style.color = '#e9edef';
-    nameEl.style.fontWeight = '600';
-    nameEl.style.fontSize = '13px';
-    nameEl.style.whiteSpace = 'nowrap';
-    nameEl.style.overflow = 'hidden';
-    nameEl.style.textOverflow = 'ellipsis';
+    nameEl.style.cssText = 'color:#e9edef;font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     nameEl.textContent = filename;
     nameEl.title = filename;
 
     const sizeEl = document.createElement('div');
-    sizeEl.style.color = '#8696a0';
-    sizeEl.style.fontSize = '11px';
+    sizeEl.style.cssText = 'color:#8696a0;font-size:11px;';
     sizeEl.textContent = blob && blob.size ? formatBytes(blob.size) : 'Ukuran berkas';
 
     infoEl.append(nameEl, sizeEl);
@@ -165,42 +183,24 @@
     card.appendChild(fileBox);
 
     const statusEl = document.createElement('div');
-    statusEl.style.fontSize = '12px';
-    statusEl.style.minHeight = '18px';
-    statusEl.style.marginBottom = '12px';
-    statusEl.style.color = '#8696a0';
+    statusEl.style.cssText = 'font-size:12px;min-height:18px;margin-bottom:12px;color:#8696a0;';
     statusEl.textContent = 'Pilih tindakan untuk berkas ini:';
     card.appendChild(statusEl);
 
     const actions = document.createElement('div');
-    actions.style.display = 'flex';
-    actions.style.flexDirection = 'column';
-    actions.style.gap = '8px';
+    actions.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
 
     const btnSave = document.createElement('button');
-    btnSave.className = 'wl-modal-btn wl-modal-btn-primary';
-    btnSave.style.padding = '10px 14px';
-    btnSave.style.display = 'flex';
-    btnSave.style.alignItems = 'center';
-    btnSave.style.justifyContent = 'center';
-    btnSave.style.gap = '8px';
-    btnSave.style.fontSize = '13px';
-    btnSave.textContent = '💾 Simpan Sebagai... (Save As)';
+    btnSave.style.cssText = 'background:#00a884;color:#111b21;border:none;border-radius:7px;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;';
+    btnSave.append(createSaveSvg(), document.createTextNode('Simpan Sebagai...'));
     btnSave.addEventListener('click', () => {
       saveWithPicker(blob, filename, statusEl, btnSave);
     });
     actions.appendChild(btnSave);
 
     const btnOpen = document.createElement('button');
-    btnOpen.className = 'wl-modal-btn wl-modal-btn-cancel';
-    btnOpen.style.padding = '9px 14px';
-    btnOpen.style.display = 'flex';
-    btnOpen.style.alignItems = 'center';
-    btnOpen.style.justifyContent = 'center';
-    btnOpen.style.gap = '8px';
-    btnOpen.style.fontSize = '13px';
-    btnOpen.style.color = '#e9edef';
-    btnOpen.textContent = '📂 Buka Berkas (Open)';
+    btnOpen.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e9edef;border-radius:7px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s;';
+    btnOpen.append(createOpenSvg(), document.createTextNode('Buka Langsung'));
     btnOpen.addEventListener('click', () => {
       try {
         const openUrl = url || URL.createObjectURL(blob);
@@ -215,7 +215,7 @@
 
     const btnCancel = document.createElement('button');
     btnCancel.className = 'wl-link-about';
-    btnCancel.style.marginTop = '6px';
+    btnCancel.style.cssText = 'background:none;border:none;color:#8696a0;font-size:12px;cursor:pointer;margin-top:4px;align-self:center;padding:4px;';
     btnCancel.textContent = 'Batal';
     btnCancel.addEventListener('click', closeDialog);
     actions.appendChild(btnCancel);
@@ -247,7 +247,6 @@
     const downloadAttr = this.getAttribute('download');
     const downloadProp = this.download;
     const hasDownload = downloadAttr !== null || (typeof downloadProp === 'string' && downloadProp.length > 0);
-
     if (hasDownload) {
       const href = this.href || this.getAttribute('href') || '';
       const filename = downloadAttr || downloadProp || 'download';
@@ -300,24 +299,61 @@
     }
   }
 
-  // Hide Desktop Upsell Banner
+  // Permanently Remove Desktop Upsell Banner
   function removeDesktopUpsell() {
-    const elms = document.querySelectorAll('span[data-icon="windows"], span[data-icon="microsoft"], a[href*="whatsapp.com/download"], a[href*="aka.ms/uwp"]');
-    elms.forEach((el) => {
-      let p = el.parentElement;
-      for (let i = 0; i < 5 && p; i++) {
-        if (p.textContent && (p.textContent.includes('Dapatkan WhatsApp') || p.textContent.includes('Get WhatsApp'))) {
+    const selectors = [
+      'span[data-icon="windows"]',
+      'span[data-icon="microsoft"]',
+      'span[data-icon*="whatsapp"]',
+      'a[href*="whatsapp.com/download"]',
+      'a[href*="aka.ms/uwp"]',
+      '[data-testid*="banner"]',
+      '[data-testid*="upsell"]'
+    ];
+    document.querySelectorAll(selectors.join(',')).forEach((el) => {
+      let p = el;
+      for (let i = 0; i < 6 && p; i++) {
+        if (p.textContent && (p.textContent.includes('Dapatkan WhatsApp') || p.textContent.includes('Get WhatsApp') || p.textContent.includes('WhatsApp untuk Windows') || p.textContent.includes('WhatsApp for Windows'))) {
           p.style.setProperty('display', 'none', 'important');
           p.style.setProperty('height', '0', 'important');
+          p.style.setProperty('max-height', '0', 'important');
           p.style.setProperty('margin', '0', 'important');
           p.style.setProperty('padding', '0', 'important');
+          p.style.setProperty('overflow', 'hidden', 'important');
+          p.style.setProperty('pointer-events', 'none', 'important');
           break;
         }
         p = p.parentElement;
       }
     });
+
+    try {
+      const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const val = node.nodeValue;
+        if (val && (val.includes('Dapatkan WhatsApp') || val.includes('Get WhatsApp') || val.includes('WhatsApp untuk Windows') || val.includes('WhatsApp for Windows'))) {
+          let p = node.parentElement;
+          for (let i = 0; i < 6 && p; i++) {
+            if (p.parentElement && (p.parentElement.id === 'pane-side' || p.getAttribute('role') === 'alert' || p.querySelector('a') || p.clientHeight > 0)) {
+              p.style.setProperty('display', 'none', 'important');
+              p.style.setProperty('height', '0', 'important');
+              p.style.setProperty('max-height', '0', 'important');
+              p.style.setProperty('margin', '0', 'important');
+              p.style.setProperty('padding', '0', 'important');
+              p.style.setProperty('overflow', 'hidden', 'important');
+              p.style.setProperty('pointer-events', 'none', 'important');
+              break;
+            }
+            p = p.parentElement;
+          }
+        }
+      }
+    } catch (_) {}
   }
 
-  setInterval(removeDesktopUpsell, 1500);
+  setInterval(removeDesktopUpsell, 1000);
   document.addEventListener('DOMContentLoaded', removeDesktopUpsell);
+  const obs = new MutationObserver(removeDesktopUpsell);
+  if (document.body) obs.observe(document.body, { childList: true, subtree: true });
 })();
