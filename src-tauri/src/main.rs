@@ -175,9 +175,13 @@ fn main() {
                 .data_directory(data_dir)
                 .additional_browser_args(BROWSER_ARGS)
                 .disable_drag_drop_handler()
-                .drag_and_drop(false)
                 .initialization_script(include_str!("../wa-privacy-panel.js"))
                 .initialization_script(include_str!("../wa-download-manager.js"));
+
+            #[cfg(target_os = "windows")]
+            {
+                builder = builder.drag_and_drop(false);
+            }
 
             #[cfg(target_os = "windows")]
             {
