@@ -393,7 +393,7 @@
         #pane-side {
           cursor: default;
         }
-        #pane-side :is([role="row"], [role="listitem"], [tabindex="-1"]) {
+        #pane-side :is([role="row"], [role="listitem"], [data-testid*="cell-frame"]) {
           cursor: pointer !important;
         }
       `;

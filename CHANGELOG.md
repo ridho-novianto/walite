@@ -5,6 +5,14 @@ All notable changes to Walite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-11-13
+
+### Fixed
+- **Per-Contact Scoped Hover Unblur in Chat List ("hanya kontak yang di-hover yang dibuka filternya")**:
+  - Completely eradicated the `[tabindex="-1"]` selector and broad `:hover *` selectors from the hover unblur rules for contact names, profile pictures, and last messages.
+  - WhatsApp Web uses `tabindex="-1"` on the entire virtual scroll list container (`#pane-side div[tabindex="-1"]`), which previously caused moving the cursor anywhere inside the left chat pane to match `:hover` and simultaneously unblur all contacts.
+  - Hover unblur is now strictly scoped to individual rows (`#pane-side :is([role="row"],[data-testid*="cell-frame"]):hover`). Moving the mouse cursor over one contact opens the filter exclusively for that specific contact's avatar, name, and last message snippet, while all other contacts remain securely blurred.
+
 ## [0.1.9] - 2026-11-13
 
 ### Fixed
