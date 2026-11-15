@@ -184,6 +184,20 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                 let _ = main_win.show();
                 let _ = main_win.unminimize();
                 let _ = main_win.set_focus();
+
+                #[cfg(target_os = "windows")]
+                if let Ok(hwnd) = main_win.hwnd() {
+                    unsafe {
+                        #[link(name = "user32")]
+                        extern "system" {
+                            fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+                            fn BringWindowToTop(hWnd: *mut std::ffi::c_void) -> i32;
+                        }
+                        BringWindowToTop(hwnd.0);
+                        SetForegroundWindow(hwnd.0);
+                    }
+                }
+
                 let safe_title = escape_js_str(&title);
                 let safe_tag = escape_js_str(&tag);
                 let js = format!(
@@ -216,6 +230,36 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
         _ => {}
     }
     true
+}
+
+#[tauri::command]
+fn walite_action(
+    app: tauri::AppHandle,
+    action: String,
+    title: Option<String>,
+    body: Option<String>,
+    icon: Option<String>,
+    tag: Option<String>,
+    text: Option<String>,
+) {
+    let mut params = std::collections::HashMap::new();
+    if let Some(t) = title { params.insert("title".to_string(), t); }
+    if let Some(b) = body { params.insert("body".to_string(), b); }
+    if let Some(i) = icon { params.insert("icon".to_string(), i); }
+    if let Some(g) = tag { params.insert("tag".to_string(), g); }
+    if let Some(x) = text { params.insert("text".to_string(), x); }
+
+    let mut query = String::new();
+    for (k, v) in &params {
+        if !query.is_empty() { query.push('&'); }
+        let enc_k = k.replace('&', "%26").replace('=', "%3D").replace('?', "%3F");
+        let enc_v = v.replace('&', "%26").replace('=', "%3D").replace('?', "%3F");
+        query.push_str(&format!("{}={}", enc_k, enc_v));
+    }
+    let dummy_url = format!("walite-action://{}?{}", action, query);
+    if let Ok(parsed) = Url::parse(&dummy_url) {
+        handle_walite_action(&app, &parsed);
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -368,6 +412,7 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![walite_action])
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();

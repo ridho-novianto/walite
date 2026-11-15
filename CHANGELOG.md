@@ -64,9 +64,15 @@ WaLite v0.2.0 merupakan rilis besar (*major stable update*) yang menghadirkan pe
 ### 🐛 Perbaikan Bug (Bug Fixes)
 
 * **Windows & Linux**:
+  * Menambahkan filter blur komprehensif untuk seluruh jenis berkas, dokumen, dan lampiran (`[data-testid*="document"]`, `[data-testid*="doc"]`, `[data-testid*="file"]`, `[data-testid*="attachment"]`, `span[data-icon*="document"]`, dll.).
+  * Memperbaiki sistem hover unblur pada panel chat kiri (`#pane-side`): Blur hanya terbuka khusus untuk kontak atau baris yang sedang di-hover kursor, tanpa membuka kontak lainnya.
   * Memperbaiki konflik selektor CSS pada opsi *"Semua Pesan Chat"* yang secara tidak sengaja menargetkan `.selectable-text` di area compose box. Selektor kini di-scope ketat ke `div[role="row"]` di dalam obrolan saja.
   * Menambahkan rule fallback anti-blur: `html.wl-overall-active:not(.wl-blur-input) #main footer, html.wl-overall-active:not(.wl-blur-input) #main footer * { filter: none !important; }`.
   * Memperbaiki hover unblur pada elemen stiker WhatsApp (`[data-testid*="sticker"]`) yang sebelumnya tidak merespons pseudo-class `:hover` induk.
+* **Windows (Tauri v2 + WebView2)**:
+  * Mengganti mekanisme `iframe` dengan IPC langsung (`window.__TAURI_INTERNALS__.invoke('walite_action')` & Tauri invoke handler) yang kebal terhadap Content-Security-Policy (CSP) WhatsApp Web, memastikan kartu notifikasi toast melayang, Balas Cepat (Quick Reply), dan *click-to-chat* berjalan 100% mulus.
+  * Menambahkan Win32 `SetForegroundWindow` dan `BringWindowToTop` saat notifikasi diklik agar WaLite langsung melompat ke depan layar pengguna.
+  * Memperbarui dispatcher klik obrolan (`__walite_open_chat`) dengan simulasi event mouse lengkap (`mousedown` + `mouseup` + `click`) yang kompatibel dengan event handler React 18.
 * **Linux (v0.1.x Legacy Fixes Promoted to Stable)**:
   * Mengatasi D-Bus notification timeout lockups (penolakan base64 data URI oleh daemon FreeDesktop).
   * Menghilangkan white flash saat startup dengan mengaplikasikan warna tema dark WhatsApp `#111b21` sejak frame pertama render engine.

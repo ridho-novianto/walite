@@ -488,16 +488,35 @@
   }, true);
 
   // Walite Navigation & Quick-Reply Bridge
+  function simulateClick(el) {
+    if (!el) return;
+    const opts = { bubbles: true, cancelable: true, view: window };
+    el.dispatchEvent(new MouseEvent('mousedown', opts));
+    el.dispatchEvent(new MouseEvent('mouseup', opts));
+    el.click();
+  }
+
   function dispatchWaliteAction(action, params) {
+    params = params || {};
     try {
-      const q = new URLSearchParams(params || {}).toString();
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = 'walite-action://' + action + (q ? ('?' + q) : '');
-      (document.body || document.documentElement).appendChild(iframe);
-      setTimeout(() => {
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      }, 100);
+      if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+        window.__TAURI_INTERNALS__.invoke('walite_action', {
+          action: action,
+          title: params.title || null,
+          body: params.body || null,
+          icon: params.icon || null,
+          tag: params.tag || null,
+          text: params.text || null
+        }).catch(function (err) {
+          console.warn('[WaLite] Invoke action error:', err);
+        });
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      const q = new URLSearchParams(params).toString();
+      window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
     } catch (e) {
       console.warn('[WaLite] Action dispatch error:', e);
     }
@@ -506,37 +525,48 @@
   if (!window.__walite_open_chat) {
     window.__walite_open_chat = function (title, jid) {
       if (!title || title === 'WhatsApp') return false;
+      const cleanTitle = title.trim();
+
+      // 1. If currently inside the target chat, return true
       const mainHeader = document.querySelector('#main header');
-      if (mainHeader && (mainHeader.textContent.includes(title) || (jid && mainHeader.innerHTML.includes(jid.split('@')[0])))) {
+      if (mainHeader && (
+        mainHeader.textContent.toLowerCase().includes(cleanTitle.toLowerCase()) ||
+        (jid && mainHeader.innerHTML.includes(jid.split('@')[0]))
+      )) {
         return true;
       }
-      const escaped = CSS.escape(title);
-      let span = document.querySelector(`#pane-side span[title="${escaped}"]`);
-      if (!span) {
-        const allSpans = document.querySelectorAll('#pane-side [role="row"] span[dir="auto"]');
-        for (const s of allSpans) {
-          if (s.textContent.trim().toLowerCase() === title.trim().toLowerCase()) {
-            span = s;
-            break;
-          }
-        }
-      }
-      if (span) {
-        const row = span.closest('[role="row"]') || span.closest('div[tabindex]');
-        if (row) {
-          row.click();
+
+      // 2. Search visible rows in pane-side
+      const rows = document.querySelectorAll('#pane-side [role="row"], #pane-side [role="listitem"], #pane-side div[tabindex]');
+      for (const r of rows) {
+        const text = r.textContent || '';
+        if (text.toLowerCase().includes(cleanTitle.toLowerCase())) {
+          simulateClick(r);
           return true;
         }
       }
-      const searchBox = document.querySelector('div[contenteditable="true"][data-tab="3"]');
+
+      // 3. Search by title attribute
+      const escaped = CSS.escape(cleanTitle);
+      const span = document.querySelector(`#pane-side span[title="${escaped}"]`);
+      if (span) {
+        const r = span.closest('[role="row"]') || span.closest('div[tabindex]') || span;
+        simulateClick(r);
+        return true;
+      }
+
+      // 4. Fallback: Search box in sidebar
+      const searchBox = document.querySelector(
+        '#side div[contenteditable="true"], div[data-tab="3"], [data-testid*="search-input"], [aria-label*="Cari"], [aria-label*="Search"]'
+      );
       if (searchBox) {
         searchBox.focus();
         document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, title);
-        searchBox.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: title }));
+        document.execCommand('insertText', false, cleanTitle);
+        searchBox.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: cleanTitle }));
         setTimeout(() => {
-          const firstRow = document.querySelector('#pane-side [role="row"]');
-          if (firstRow) firstRow.click();
+          const firstRow = document.querySelector('#pane-side [role="row"], #pane-side [role="listitem"]');
+          if (firstRow) simulateClick(firstRow);
         }, 350);
         return true;
       }
@@ -555,12 +585,12 @@
         attempts++;
         const footer = document.querySelector('#main footer');
         if (!footer) {
-          if (attempts < 20) setTimeout(trySend, 150);
+          if (attempts < 25) setTimeout(trySend, 120);
           return;
         }
-        const box = footer.querySelector('[contenteditable="true"]');
+        const box = footer.querySelector('[contenteditable="true"], div[role="textbox"]');
         if (!box) {
-          if (attempts < 20) setTimeout(trySend, 150);
+          if (attempts < 25) setTimeout(trySend, 120);
           return;
         }
         box.focus();
@@ -572,11 +602,11 @@
           const sendBtn = footer.querySelector('button[aria-label*="Kirim"], button[aria-label*="Send"], [data-testid="send"]') ||
                           footer.querySelector('span[data-icon="send"]')?.closest('button');
           if (sendBtn) {
-            sendBtn.click();
+            simulateClick(sendBtn);
           } else {
             box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
           }
-        }, 200);
+        }, 180);
       }
       setTimeout(trySend, 250);
     };

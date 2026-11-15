@@ -246,14 +246,29 @@
     let dismissTimer = null;
 
     function sendAction(action, params) {
+      params = params || {};
+      try {
+        if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+          window.__TAURI_INTERNALS__.invoke('walite_action', {
+            action: action,
+            title: params.title || null,
+            body: params.body || null,
+            icon: params.icon || null,
+            tag: params.tag || null,
+            text: params.text || null
+          }).catch(function (err) {
+            console.warn('[WaLite Toast] Invoke action error:', err);
+          });
+          return;
+        }
+      } catch (_) {}
+
       try {
         const q = new URLSearchParams(params).toString();
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = 'walite-action://' + action + '?' + q;
-        document.body.appendChild(iframe);
-        setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 100);
-      } catch (e) {}
+        window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
+      } catch (e) {
+        console.warn('[WaLite Toast] Action dispatch error:', e);
+      }
     }
 
     function resetTimer(delay = 8000) {
