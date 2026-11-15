@@ -111,6 +111,113 @@ fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
     }
 }
 
+fn escape_js_str(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('\'', "\\'")
+        .replace('\"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
+fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
+    if url.scheme() != "walite-action" {
+        return false;
+    }
+    let action = url.host_str().unwrap_or("");
+    let mut params = std::collections::HashMap::new();
+    for (k, v) in url.query_pairs() {
+        params.insert(k.to_string(), v.to_string());
+    }
+
+    match action {
+        "notify" => {
+            let title = params.get("title").cloned().unwrap_or_default();
+            let body = params.get("body").cloned().unwrap_or_default();
+            let icon = params.get("icon").cloned().unwrap_or_default();
+            let tag = params.get("tag").cloned().unwrap_or_default();
+
+            if let Some(toast_win) = app.get_webview_window("toast") {
+                if let Ok(Some(monitor)) = app.primary_monitor() {
+                    let scale = monitor.scale_factor();
+                    let size = monitor.size();
+                    let toast_w = (380.0 * scale) as i32;
+                    let toast_h = (135.0 * scale) as i32;
+                    let margin_x = (20.0 * scale) as i32;
+                    let margin_y = (60.0 * scale) as i32;
+                    let x = size.width as i32 - toast_w - margin_x;
+                    let y = size.height as i32 - toast_h - margin_y;
+                    let _ = toast_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
+                }
+
+                let safe_title = escape_js_str(&title);
+                let safe_body = escape_js_str(&body);
+                let safe_icon = escape_js_str(&icon);
+                let safe_tag = escape_js_str(&tag);
+                let js = format!(
+                    "if (window.showToast) window.showToast('{}', '{}', '{}', '{}');",
+                    safe_title, safe_body, safe_icon, safe_tag
+                );
+                let _ = toast_win.eval(&js);
+
+                #[cfg(target_os = "windows")]
+                if let Ok(hwnd) = toast_win.hwnd() {
+                    unsafe {
+                        #[link(name = "user32")]
+                        extern "system" {
+                            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+                        }
+                        const SW_SHOWNOACTIVATE: i32 = 4;
+                        ShowWindow(hwnd.0, SW_SHOWNOACTIVATE);
+                    }
+                }
+                #[cfg(not(target_os = "windows"))]
+                let _ = toast_win.show();
+            }
+        }
+        "open-chat" => {
+            if let Some(toast_win) = app.get_webview_window("toast") {
+                let _ = toast_win.hide();
+            }
+            let title = params.get("title").cloned().unwrap_or_default();
+            let tag = params.get("tag").cloned().unwrap_or_default();
+            if let Some(main_win) = app.get_webview_window("main") {
+                let _ = main_win.show();
+                let _ = main_win.unminimize();
+                let _ = main_win.set_focus();
+                let safe_title = escape_js_str(&title);
+                let safe_tag = escape_js_str(&tag);
+                let js = format!(
+                    "if (window.__walite_open_chat) window.__walite_open_chat('{}', '{}');",
+                    safe_title, safe_tag
+                );
+                let _ = main_win.eval(&js);
+            }
+        }
+        "send-reply" => {
+            let title = params.get("title").cloned().unwrap_or_default();
+            let tag = params.get("tag").cloned().unwrap_or_default();
+            let text = params.get("text").cloned().unwrap_or_default();
+            if let Some(main_win) = app.get_webview_window("main") {
+                let safe_title = escape_js_str(&title);
+                let safe_tag = escape_js_str(&tag);
+                let safe_text = escape_js_str(&text);
+                let js = format!(
+                    "if (window.__walite_send_reply) window.__walite_send_reply('{}', '{}', '{}');",
+                    safe_title, safe_tag, safe_text
+                );
+                let _ = main_win.eval(&js);
+            }
+        }
+        "close-toast" => {
+            if let Some(toast_win) = app.get_webview_window("toast") {
+                let _ = toast_win.hide();
+            }
+        }
+        _ => {}
+    }
+    true
+}
+
 #[cfg(target_os = "windows")]
 fn init_windows_app_identity() {
     use std::os::windows::ffi::OsStrExt;
@@ -138,18 +245,125 @@ fn main() {
 
     #[cfg(target_os = "linux")]
     {
-        // Fix WebKitGTK DMA-BUF GPU crashes, blank/white screen on startup or resume,
-        // and deadlocks during video playback, status view, and canvas image compression
-        if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
-            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        // Expose SharedArrayBuffer in the webview. WhatsApp Web's Chrome codepath
+        // runs its wasm media/crypto workers on SharedArrayBuffer. Distro WebKitGTK ships it
+        // OFF by default, causing media/crypto processing to hang or fail.
+        if std::env::var_os("JSC_useSharedArrayBuffer").is_none() {
+            std::env::set_var("JSC_useSharedArrayBuffer", "1");
+        }
+        // Keep UI GPU compositing enabled across all Linux hardware (Intel, AMD, NVIDIA).
+        // Leaving GPU compositing enabled ensures 60-144 FPS smooth scrolling, zero typing lag,
+        // and low CPU utilization.
+        // Disable GStreamer GL & DMA-BUF video sinks to prevent uninitialized EGL/GBM YUV textures
+        // (which cause solid green video cards and playback failures on NVIDIA drivers).
+        // The Cairo video sink renders video frames directly to standard system memory surfaces with
+        // 100% color accuracy, zero green artifacts, and continuous audio/video playback.
+        if std::env::var("WEBKIT_GST_DISABLE_GL_SINK").is_err() {
+            std::env::set_var("WEBKIT_GST_DISABLE_GL_SINK", "1");
+        }
+        if std::env::var("WEBKIT_GST_DMABUF_SINK_DISABLED").is_err() {
+            std::env::set_var("WEBKIT_GST_DMABUF_SINK_DISABLED", "1");
+        }
+        if std::env::var("GST_GL_DISABLE").is_err() {
+            std::env::set_var("GST_GL_DISABLE", "1");
         }
         if std::env::var("__NV_DISABLE_EXPLICIT_SYNC").is_err() {
             std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1");
         }
-        // Force GStreamer to use robust software decoders (FFmpeg gst-libav) instead of
-        // deadlocking on GPU VA-API / NVDEC buffer sharing when DMA-BUF renderer is disabled
+        // Enable WebKitGTK Web Inspector remote debugging on localhost:9222
+        if std::env::var("WEBKIT_INSPECTOR_SERVER").is_err() {
+            std::env::set_var("WEBKIT_INSPECTOR_SERVER", "127.0.0.1:9222");
+        }
+        // Enable NVIDIA NVDEC hardware decoders (nvh264dec, nvh265dec) with rank 260.
+        // NVDEC decodes H.264/H.265 directly with dedicated GPU ASICs (0% CPU, high FPS, full PPS/B-frame support).
+        // With GL sinks disabled, NVDEC outputs directly to standard system memory surfaces (video/x-raw NV12),
+        // completely avoiding green screen artifacts while avoiding avdec_h264's PPS errors.
+        // Disable Vulkan & VA-API decoders to prevent VulkanImage memory mismatches and NVIDIA VA-API conflicts.
         if std::env::var("GST_VAAPI_ALL_DRIVERS_DISABLE").is_err() {
             std::env::set_var("GST_VAAPI_ALL_DRIVERS_DISABLE", "1");
+        }
+        std::env::set_var(
+            "GST_PLUGIN_FEATURE_RANK",
+            "glupload:NONE,glcolorconvert:NONE,glimagesink:NONE,glimagesinkelement:NONE,\
+             glsinkbin:NONE,qmlglsink:NONE,\
+             nvh264dec:260,nvh265dec:260,nvvp8dec:NONE,nvvp9dec:NONE,nvav1dec:NONE,\
+             nvjpegdec:NONE,nvmpeg4videodec:NONE,nvmpeg2videodec:NONE,nvmpegvideodec:NONE,\
+             vulkanh264dec:NONE,vulkanh265dec:NONE,vulkanvp9dec:NONE,vulkanav1dec:NONE,\
+             vaapih264dec:NONE,vaapih265dec:NONE,vaapivp8dec:NONE,vaapivp9dec:NONE,\
+             openh264dec:NONE,openh264enc:NONE,\
+             h264parse:258,fdkaacdec:256,faad:200,avdec_aac:64,avdec_aac_fixed:64,avdec_aac_latm:64",
+        );
+
+        // Quiet GStreamer scanner warnings (level 1 = errors only) to keep terminal output clean
+        if std::env::var("GST_DEBUG").is_err() {
+            std::env::set_var("GST_DEBUG", "1");
+        }
+
+        // GStreamer plugin discovery for Linux (AppImage & Native):
+        // Ensure GStreamer discovers host plugins properly. In AppImage, linuxdeploy's AppRun.wrapped
+        // hardcodes GST_PLUGIN_SYSTEM_PATH_1_0 to $APPDIR/usr/lib/gstreamer-1.0 (which does not exist in AppImage).
+        // We MUST unconditionally override it with existing host plugin paths; otherwise GStreamer fails to find
+        // essential elements (appsrc, appsink, autoaudiosink), causing WebKitWebProcess to freeze/crash on chat opening or media.
+        // We canonicalize paths so symlinks like /usr/lib64 -> /usr/lib don't cause duplicate scanning.
+        let plugin_dirs = [
+            "/usr/lib/gstreamer-1.0",
+            "/usr/lib/x86_64-linux-gnu/gstreamer-1.0",
+            "/usr/lib64/gstreamer-1.0",
+            "/usr/local/lib/gstreamer-1.0",
+            "/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0",
+            "/usr/local/lib64/gstreamer-1.0",
+        ];
+        let mut found_dirs: Vec<PathBuf> = Vec::new();
+        for d in plugin_dirs {
+            let p = std::path::Path::new(d);
+            if p.is_dir() {
+                if let Ok(canon) = p.canonicalize() {
+                    if !found_dirs.contains(&canon) {
+                        found_dirs.push(canon);
+                    }
+                }
+            }
+        }
+        if !found_dirs.is_empty() {
+            let path_str = found_dirs
+                .iter()
+                .filter_map(|p| p.to_str())
+                .collect::<Vec<_>>()
+                .join(":");
+            std::env::set_var("GST_PLUGIN_SYSTEM_PATH_1_0", &path_str);
+            std::env::set_var("GST_PLUGIN_PATH_1_0", &path_str);
+        }
+
+        let scanners = [
+            "/usr/lib/gstreamer-1.0/gst-plugin-scanner",
+            "/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner",
+            "/usr/lib/x86_64-linux-gnu/gstreamer-1.0/gst-plugin-scanner",
+            "/usr/libexec/gstreamer-1.0/gst-plugin-scanner",
+            "/usr/lib64/gstreamer-1.0/gst-plugin-scanner",
+        ];
+        for s in scanners {
+            if std::path::Path::new(s).exists() {
+                std::env::set_var("GST_PLUGIN_SCANNER", s);
+                break;
+            }
+        }
+
+        // AppImage compatibility: When running inside an AppImage on rolling/modern distros
+        // (Arch, Fedora, openSUSE), AppImage bundles older libraries (like liblzma from Ubuntu 22.04).
+        // Sanitize LD_LIBRARY_PATH for child processes (WebKitWebProcess, gst-plugin-scanner) so
+        // they link against modern host libraries without version symbol conflicts.
+        if let Ok(appdir) = std::env::var("APPDIR") {
+            if let Ok(ld_path) = std::env::var("LD_LIBRARY_PATH") {
+                let filtered: Vec<&str> = ld_path
+                    .split(':')
+                    .filter(|p| !p.is_empty() && !p.starts_with(&appdir))
+                    .collect();
+                if filtered.is_empty() {
+                    std::env::remove_var("LD_LIBRARY_PATH");
+                } else {
+                    std::env::set_var("LD_LIBRARY_PATH", filtered.join(":"));
+                }
+            }
         }
     }
 
@@ -168,7 +382,8 @@ fn main() {
                     match kind {
                         PermissionKind::Notifications
                         | PermissionKind::Microphone
-                        | PermissionKind::Camera => PermissionResponse::Allow,
+                        | PermissionKind::Camera
+                        | PermissionKind::Autoplay => PermissionResponse::Allow,
                         _ => PermissionResponse::Default,
                     }
                 } else {
@@ -202,10 +417,11 @@ fn main() {
 
             #[cfg(target_os = "linux")]
             {
-                // Deliver standard Chrome on Linux User Agent so WhatsApp Web serves universal web emojis
-                // and unlocks standard modern web capabilities
+                // Deliver standard Google Chrome on Linux User Agent matching modern Chrome releases.
+                // This causes WhatsApp Web to serve standard web media (H.264/AAC MP4 & WebM)
+                // matching Linux web capabilities.
                 builder = builder.user_agent(
-                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
                 );
             }
 
@@ -229,31 +445,31 @@ fn main() {
                 builder = builder.icon(icon.clone())?;
             }
 
-            #[cfg(not(debug_assertions))]
-            {
-                builder = builder.devtools(false);
-            }
+            // Enable Web Inspector & DevTools (right-click Inspect Element)
+            builder = builder.devtools(true);
 
-            // Navigation handler: keep Walite on WhatsApp Web, open external links in browser
-            builder = builder.on_navigation(move |url| {
-                let url_str = url.as_str();
-                let is_internal_app = url_str == "about:blank" || {
-                    if url.scheme() == "https" {
-                        url.host_str() == Some("web.whatsapp.com")
+            // Navigation handler: keep Walite on WhatsApp Web, open external links in browser.
+            // On Linux, navigation policy and full autoplay permissions are managed directly via
+            // WebKitGTK's decide-policy signal in `with_webview` to avoid Wry overriding autoplay policies.
+            #[cfg(not(target_os = "linux"))]
+            {
+                let app_nav = app_handle.clone();
+                builder = builder.on_navigation(move |url| {
+                    if url.scheme() == "walite-action" {
+                        handle_walite_action(&app_nav, url);
+                        return false;
+                    }
+                    let url_str = url.as_str();
+                    if is_allowed_internal_url(&url) {
+                        true
                     } else {
+                        if is_safe_external_scheme(url.scheme()) {
+                            open_in_default_browser(url_str);
+                        }
                         false
                     }
-                };
-
-                if is_internal_app {
-                    true
-                } else {
-                    if is_safe_external_scheme(url.scheme()) {
-                        open_in_default_browser(url_str);
-                    }
-                    false
-                }
-            });
+                });
+            }
 
             // New window handler (e.g. target="_blank", window.open)
             builder = builder.on_new_window(move |url, _features| {
@@ -263,6 +479,10 @@ fn main() {
                 }
                 if url.scheme() == "blob" || url.scheme() == "data" {
                     return NewWindowResponse::Allow;
+                }
+                if is_allowed_internal_url(&url) {
+                    // Internal WhatsApp frames, Flows cache, and PDF viewer should NOT spawn external browser
+                    return NewWindowResponse::Deny;
                 }
                 if is_safe_external_scheme(url.scheme()) {
                     open_in_default_browser(url_str);
@@ -305,6 +525,102 @@ fn main() {
 
             let window = builder.build()?;
             let _ = window.show();
+
+            // Build secondary toast window for interactive Quick-Reply notifications
+            let toast_url = WebviewUrl::App("toast.html".into());
+            let mut toast_builder = WebviewWindowBuilder::new(app, "toast", toast_url)
+                .title("WaLite Notification")
+                .inner_size(380.0, 135.0)
+                .resizable(false)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .visible(false);
+
+            #[cfg(target_os = "windows")]
+            {
+                toast_builder = toast_builder.drag_and_drop(false);
+            }
+
+            let toast_app_nav = app_handle.clone();
+            toast_builder = toast_builder.on_navigation(move |url| {
+                if url.scheme() == "walite-action" {
+                    handle_walite_action(&toast_app_nav, url);
+                    return false;
+                }
+                false
+            });
+
+            let _toast_win = toast_builder.build()?;
+
+            #[cfg(target_os = "linux")]
+            {
+                use webkit2gtk::glib::Cast;
+                use webkit2gtk::*;
+                let app_handle_linux = app_handle.clone();
+                let _ = window.with_webview(move |webview| {
+                    let inner = webview.inner();
+                    if let Some(settings) = inner.settings() {
+                        settings.set_media_playback_requires_user_gesture(false);
+                        // Enable MediaSource (MSE) so WhatsApp Web modern status features (audio notes,
+                        // music, stickers, video) pass client capability checks without showing
+                        // "Anda telah menerima status, tetapi versi WhatsApp Anda tidak mendukungnya".
+                        settings.set_enable_mediasource(true);
+                        settings.set_enable_webaudio(true);
+                        settings.set_enable_webgl(true);
+                        settings.set_enable_media_stream(true);
+                        settings.set_enable_media_capabilities(true);
+                        settings.set_enable_encrypted_media(true);
+                        settings.set_enable_webrtc(true);
+                        // Disable site-specific quirks so WebKitGTK doesn't override Chrome UA with an ancient Safari UA
+                        settings.set_enable_site_specific_quirks(false);
+                    }
+
+                    // Enforce AutoplayPolicy::Allow on ALL navigations so video and status audio
+                    // are never muted by WebKitGTK's default ALLOW_WITHOUT_SOUND policy.
+                    // Also handles internal navigation and routes external links to host browser.
+                    inner.connect_decide_policy(move |_wv, decision, decision_type| {
+                        if decision_type == PolicyDecisionType::NavigationAction {
+                            if let Some(policy) = decision.dynamic_cast_ref::<NavigationPolicyDecision>() {
+                                if let Some(nav_action) = policy.navigation_action() {
+                                    if let Some(uri_req) = nav_action.request() {
+                                        if let Some(uri) = uri_req.uri() {
+                                            let uri_str = uri.as_str();
+                                            if let Ok(parsed_url) = Url::parse(uri_str) {
+                                                if parsed_url.scheme() == "walite-action" {
+                                                    handle_walite_action(&app_handle_linux, &parsed_url);
+                                                    decision.ignore();
+                                                    return true;
+                                                }
+                                                if is_allowed_internal_url(&parsed_url) {
+                                                    let policies = WebsitePolicies::builder()
+                                                        .autoplay(AutoplayPolicy::Allow)
+                                                        .build();
+                                                    decision.use_with_policies(&policies);
+                                                    return true;
+                                                } else {
+                                                    decision.ignore();
+                                                    if is_safe_external_scheme(parsed_url.scheme()) {
+                                                        open_in_default_browser(uri_str);
+                                                    }
+                                                    return true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            let policies = WebsitePolicies::builder()
+                                .autoplay(AutoplayPolicy::Allow)
+                                .build();
+                            decision.use_with_policies(&policies);
+                            return true;
+                        }
+                        false
+                    });
+                });
+            }
 
             if let Some(icon) = final_icon {
                 let _ = window.set_icon(icon.clone());

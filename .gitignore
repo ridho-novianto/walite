@@ -18,6 +18,14 @@ node_modules/
 *.swo
 *~
 
+# Python & AppDir artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+AppDir/
+squashfs-root/
+*.AppImage
+
 # OS artifacts
 Thumbs.db
 Desktop.ini

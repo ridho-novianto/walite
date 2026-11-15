@@ -8,7 +8,7 @@
 
 </div>
 
-WaLite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tailored for Windows and Linux, built with Tauri v2, Rust, and native webview runtimes (Microsoft Edge WebView2 on Windows, WebKitGTK on Linux). It is designed to minimize resource consumption, maintain persistent sessions in an isolated directory, and offer client-side visual privacy tools and a screen locker.
+WaLite is a lightweight, privacy-conscious desktop wrapper for WhatsApp Web tailored for Windows and Linux, built with Tauri v2, Rust, and native webview runtimes (Microsoft Edge WebView2 on Windows, PyQt6 / QtWebEngine on Linux). It is designed to minimize resource consumption, maintain persistent sessions in an isolated directory, and offer client-side visual privacy tools and a screen locker.
 
 ## Highlights
 

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WaLite Notification</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .toast-card {
+      width: 100%;
+      height: 100%;
+      background: #1f2c34;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      padding: 10px 12px;
+      color: #e9edef;
+      position: relative;
+      transition: border-color 0.2s ease;
+    }
+    .toast-card:hover {
+      border-color: rgba(0, 168, 132, 0.4);
+    }
+    .toast-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 18px;
+      margin-bottom: 6px;
+    }
+    .toast-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #00a884;
+      letter-spacing: 0.3px;
+    }
+    .toast-brand svg {
+      width: 14px;
+      height: 14px;
+      fill: #00a884;
+    }
+    .toast-close-btn {
+      background: transparent;
+      border: none;
+      color: #8696a0;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .toast-close-btn:hover {
+      color: #f15c6d;
+      background: rgba(241, 92, 109, 0.15);
+    }
+    .toast-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 6px;
+      transition: background 0.15s;
+      flex: 1;
+      min-height: 42px;
+    }
+    .toast-content:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .avatar-wrapper {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #2a3942;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .avatar-fallback {
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      background: #00a884;
+      text-transform: uppercase;
+    }
+    .msg-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sender-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e9edef;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .msg-body {
+      font-size: 12px;
+      color: #8696a0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+    .reply-container {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .reply-input {
+      flex: 1;
+      height: 30px;
+      background: #111b21;
+      border: 1px solid #2a3942;
+      border-radius: 6px;
+      padding: 0 10px;
+      color: #e9edef;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .reply-input:focus {
+      border-color: #00a884;
+    }
+    .reply-input::placeholder {
+      color: #667781;
+    }
+    .reply-btn {
+      width: 30px;
+      height: 30px;
+      background: #00a884;
+      border: none;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .reply-btn:hover {
+      background: #06cf9c;
+    }
+    .reply-btn:active {
+      transform: scale(0.95);
+    }
+    .reply-btn svg {
+      width: 15px;
+      height: 15px;
+      fill: #111b21;
+    }
+    .status-sent {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #00a884;
+      font-weight: 600;
+      margin-top: 6px;
+      padding-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toast-card" id="toastCard">
+    <div class="toast-header">
+      <div class="toast-brand">
+        <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z"/></svg>
+        <span>WaLite</span>
+      </div>
+      <button class="toast-close-btn" id="btnClose" title="Tutup">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="toast-content" id="contentArea">
+      <div class="avatar-wrapper">
+        <img class="avatar-img" id="avatarImg" alt="" />
+        <div class="avatar-fallback" id="avatarFallback">W</div>
+      </div>
+      <div class="msg-info">
+        <div class="sender-title" id="senderTitle">Pengirim</div>
+        <div class="msg-body" id="msgBody">Pesan WhatsApp</div>
+      </div>
+    </div>
+
+    <div class="reply-container" id="replyContainer">
+      <input type="text" class="reply-input" id="replyInput" placeholder="Balas cepat..." autocomplete="off" />
+      <button class="reply-btn" id="btnSend" title="Kirim balasan">
+        <svg viewBox="0 0 24 24">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="status-sent" id="statusSent">
+      ✓ Pesan terkirim
+    </div>
+  </div>
+
+  <script>
+    let currentTag = '';
+    let currentTitle = '';
+    let dismissTimer = null;
+
+    function sendAction(action, params) {
+      try {
+        const q = new URLSearchParams(params).toString();
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = 'walite-action://' + action + '?' + q;
+        document.body.appendChild(iframe);
+        setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 100);
+      } catch (e) {}
+    }
+
+    function resetTimer(delay = 8000) {
+      if (dismissTimer) clearTimeout(dismissTimer);
+      dismissTimer = setTimeout(() => {
+        sendAction('close-toast', {});
+      }, delay);
+    }
+
+    window.showToast = function(title, body, icon, tag) {
+      currentTitle = title || 'WhatsApp';
+      currentTag = tag || '';
+
+      document.getElementById('senderTitle').textContent = currentTitle;
+      document.getElementById('msgBody').textContent = body || '';
+
+      const img = document.getElementById('avatarImg');
+      const fallback = document.getElementById('avatarFallback');
+
+      if (icon && (icon.startsWith('http') || icon.startsWith('data:'))) {
+        img.src = icon;
+        img.style.display = 'block';
+        fallback.style.display = 'none';
+        img.onerror = () => {
+          img.style.display = 'none';
+          fallback.textContent = (currentTitle[0] || 'W').toUpperCase();
+          fallback.style.display = 'flex';
+        };
+      } else {
+        img.style.display = 'none';
+        fallback.textContent = (currentTitle[0] || 'W').toUpperCase();
+        fallback.style.display = 'flex';
+      }
+
+      const isRealChat = currentTitle !== 'WhatsApp' &&
+                         !body.toLowerCase().includes('uji coba') &&
+                         !body.toLowerCase().includes('test');
+
+      const replyContainer = document.getElementById('replyContainer');
+      const replyInput = document.getElementById('replyInput');
+      const statusSent = document.getElementById('statusSent');
+
+      statusSent.style.display = 'none';
+      replyInput.value = '';
+
+      if (isRealChat) {
+        replyContainer.style.display = 'flex';
+        replyInput.placeholder = 'Balas ke ' + currentTitle + '...';
+      } else {
+        replyContainer.style.display = 'none';
+      }
+
+      resetTimer(8000);
+    };
+
+    document.getElementById('btnClose').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dismissTimer) clearTimeout(dismissTimer);
+      sendAction('close-toast', {});
+    });
+
+    document.getElementById('contentArea').addEventListener('click', () => {
+      if (dismissTimer) clearTimeout(dismissTimer);
+      sendAction('open-chat', { title: currentTitle, tag: currentTag });
+    });
+
+    function doSendReply() {
+      const input = document.getElementById('replyInput');
+      const text = (input.value || '').trim();
+      if (!text) return;
+
+      if (dismissTimer) clearTimeout(dismissTimer);
+
+      document.getElementById('replyContainer').style.display = 'none';
+      const statusSent = document.getElementById('statusSent');
+      statusSent.style.display = 'flex';
+
+      sendAction('send-reply', {
+        title: currentTitle,
+        tag: currentTag,
+        text: text
+      });
+
+      setTimeout(() => {
+        sendAction('close-toast', {});
+      }, 700);
+    }
+
+    document.getElementById('btnSend').addEventListener('click', (e) => {
+      e.stopPropagation();
+      doSendReply();
+    });
+
+    const replyInput = document.getElementById('replyInput');
+    replyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doSendReply();
+      }
+    });
+
+    replyInput.addEventListener('focus', () => {
+      if (dismissTimer) clearTimeout(dismissTimer);
+    });
+
+    replyInput.addEventListener('blur', () => {
+      if (!replyInput.value) {
+        resetTimer(4000);
+      }
+    });
+
+    document.getElementById('toastCard').addEventListener('mouseenter', () => {
+      if (dismissTimer) clearTimeout(dismissTimer);
+    });
+
+    document.getElementById('toastCard').addEventListener('mouseleave', () => {
+      if (document.activeElement !== replyInput) {
+        resetTimer(4000);
+      }
+    });
+  </script>
+</body>
+</html>

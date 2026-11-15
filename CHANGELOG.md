@@ -5,6 +5,86 @@ All notable changes to WaLite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-15
+
+> **Release Channel:** Stable (General Availability) / LTS Baseline  
+> **Target Platform:** Windows 10/11 (64-bit) & Linux (x86_64 AppImage & Tarball)  
+> **Status:** Production Ready  
+
+WaLite v0.2.0 merupakan rilis besar (*major stable update*) yang menghadirkan pemisahan arsitektur mesin secara optimal untuk Windows dan Linux, dukungan penuh notifikasi interaktif **Balas Cepat (Quick Reply)** di kedua sistem operasi, penyelesaian tuntas isu multimedia di Linux, serta perbaikan menyeluruh pada engine privasi blur.
+
+---
+
+### 🌟 Ringkasan Utama (Highlights)
+
+* **Versi Stabil (General Availability / LTS Baseline):**
+  * Bukan lagi berstatus *preview/beta*. Seluruh komponen inti telah diuji stabilitasnya untuk penggunaan harian intensif.
+  * **Windows**: Berjalan di atas **Tauri v2 + Rust + WebView2** dengan jejak biner ultra-ringan (~3 MB), memori Private Working Set hemat (~6.7 MB), dan engine rendering Edge Chromium.
+  * **Linux**: Ditenagai oleh **PyQt6 + QtWebEngine (Chromium 140)** dengan akselerasi GPU (VA-API/Vulkan), menyelesaikan seluruh masalah video freeze dan audio deadlock warisan WebKitGTK.
+
+* **Notifikasi Interaktif & Balas Cepat (Quick Reply) di Windows & Linux:**
+  * **Windows (Tauri v2)**: Menghadirkan *floating toast notification card* modern berdesain Fluent Dark (`src/toast.html`) di pojok kanan bawah layar. Dilengkapi foto profil kontak (lingkaran), nama pengirim, preview pesan, dan kolom **Balas Cepat** inline (`<input>` + Enter/Kirim). Pengguna dapat membalas pesan instan tanpa perlu membuka jendela utama WaLite, atau mengklik kartu notifikasi untuk langsung fokus dan melompat ke chat room pengirim. Tampil menggunakan `SW_SHOWNOACTIVATE` sehingga tidak mencuri fokus ketikan aktif di aplikasi lain.
+  * **Linux (PyQt6)**: Integrasi penuh notifikasi FreeDesktop / KDE Plasma via D-Bus (`org.freedesktop.Notifications`). Mendukung inline quick-reply (`NotificationReplied` D-Bus signal), avatar kontak melingkar via hint `image-path`, serta navigasi klik langsung ke obrolan dengan aktivasi Wayland `XDG_ACTIVATION_TOKEN`.
+
+* **Perbaikan Total Engine Privacy Blur (`wa-privacy-panel.js`):**
+  * **Proteksi Kotak Ketik Pesan**: Memperbaiki bug di mana kotak input ketik pesan di `#main footer` ikut ter-blur saat opsi *"Semua Pesan Chat"* diaktifkan. Sekarang teks yang sedang diketik tetap 100% terbaca jelas tanpa terpengaruh filter blur.
+  * **Unblur Stiker saat Hover**: Memperbaiki bug stiker yang blurnya tidak mau hilang saat kursor diarahkan (*hover*). Selector `:has(:hover)` dan `:hover *` universal kini memastikan stiker dan media langsung terbuka seketika saat di-hover.
+
+---
+
+### ✨ Fitur Baru (New Features & Improvements)
+
+#### 1. Linux Client (`src-linux/walite.py`)
+* **Arsitektur Baru QtWebEngine (Chromium)**:
+  * Eliminasi 100% galat `atom has bogus size`, video status macet, dan audio deadlock yang sebelumnya terjadi pada WebKitGTK / GStreamer.
+  * Dukungan native hardware-accelerated video decoding (H.264/AVC1, VP8, VP9) dan AAC/Opus audio.
+  * Dukungan penuh panggilan suara dan video WhatsApp Web (WebRTC), izin hardware mikrofon & kamera secara granular, dan drag-and-drop media sharing.
+* **Manajemen Sumber Daya & Performa**:
+  * Batas V8 heap memori 512 MB (`--js-flags=--max_old_space_size=512`) dan limit maksimal 2 proses renderer untuk mencegah kebocoran memori.
+  * Pembatasan ukuran cache disk HTTP hingga 120 MB.
+  * Pengingat ukuran dan posisi jendela (*geometry persistence*) serta zoom level per sesi.
+  * Pintasan zoom halus: `Ctrl + Mouse Wheel`, `Ctrl + Plus`, `Ctrl + Minus`, dan `Ctrl + 0` (Reset).
+  * Penegakan single-instance via socket lokal `QLocalServer`.
+
+#### 2. Windows Client (`src-tauri`)
+* **Floating Toast Quick-Reply Engine (`src/toast.html`)**:
+  * Jendela sekunder frameless, transparan, dan *always-on-top* di sudut kanan bawah desktop.
+  * Auto-dismiss cerdas: Menutup otomatis setelah 8 detik jika diabaikan; timer otomatis ditunda saat kursor berada di atas kartu atau saat pengguna sedang mengetik balasan.
+  * Protokol komunikasi internal `walite-action://` yang aman dan kebal terhadap CSP web.
+* **Integrasi Unduhan & Autoplay**:
+  * Handler unduhan file otomatis mengarahkan ke folder `Downloads` pengguna dengan penamaan unik anti-overwrite.
+
+#### 3. Otomasi Rilis & Distribusi CI/CD (`.github/workflows/release.yml`)
+* Pipeline otomatis rilis dual-platform di GitHub Actions:
+  * **Windows**: Di-compile pada runner `windows-latest` menggunakan Rust toolchain stable dan Tauri CLI v2, menghasilkan paket instalasi NSIS (`.exe`) dan Windows Installer (`.msi`).
+  * **Linux**: Di-package pada runner `ubuntu-22.04` menggunakan PyInstaller dan `appimagetool`, menghasilkan portable standalone binary `WaLite_<version>_amd64.AppImage` dan arsip `.tar.gz`.
+
+---
+
+### 🐛 Perbaikan Bug (Bug Fixes)
+
+* **Windows & Linux**:
+  * Memperbaiki konflik selektor CSS pada opsi *"Semua Pesan Chat"* yang secara tidak sengaja menargetkan `.selectable-text` di area compose box. Selektor kini di-scope ketat ke `div[role="row"]` di dalam obrolan saja.
+  * Menambahkan rule fallback anti-blur: `html.wl-overall-active:not(.wl-blur-input) #main footer, html.wl-overall-active:not(.wl-blur-input) #main footer * { filter: none !important; }`.
+  * Memperbaiki hover unblur pada elemen stiker WhatsApp (`[data-testid*="sticker"]`) yang sebelumnya tidak merespons pseudo-class `:hover` induk.
+* **Linux (v0.1.x Legacy Fixes Promoted to Stable)**:
+  * Mengatasi D-Bus notification timeout lockups (penolakan base64 data URI oleh daemon FreeDesktop).
+  * Menghilangkan white flash saat startup dengan mengaplikasikan warna tema dark WhatsApp `#111b21` sejak frame pertama render engine.
+
+---
+
+### 📂 Berkas & Komponen yang Diperbarui (Changelog Berkas)
+
+* `src-linux/walite.py`: Client Linux mandiri berbasis PyQt6 + QtWebEngine dengan D-Bus quick-reply notification manager dan window persistence.
+* `src-linux/id.my.vianto06.walite.desktop` & `src-linux/run.sh`: Desktop entry dan starter script untuk integrasi desktop Linux.
+* `src/toast.html`: Tampilan antarmuka kartu notifikasi mengambang Windows (Fluent dark theme, avatar kontak, quick reply).
+* `src-tauri/src/main.rs`: Handler jendela toast notifikasi, IPC bridge `walite-action://`, penyesuaian posisi multi-monitor, dan DPI scaling.
+* `src-tauri/wa-download-manager.js`: Intersepsi `window.Notification` untuk Windows Quick-Reply, helper DOM `__walite_open_chat`, dan dispatcher `__walite_send_reply`.
+* `src-tauri/wa-privacy-panel.js`: Patch selector CSS compose box dan universal hover unblur untuk stiker/media.
+* `src-tauri/capabilities/default.json`: Penambahan hak akses window `"toast"` pada konfigurasi keamanan Tauri v2.
+* `.github/workflows/release.yml`: Alur kerja otomatis build rilis multi-platform (Windows Tauri + Linux AppImage).
+* `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`: Bump versi rilis ke `0.2.0`.
+
 ## [0.1.14] - 2026-11-13
 
 ### Fixed

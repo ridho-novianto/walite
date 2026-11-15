@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=WaLite
+Comment=Lightweight, secure, and privacy-focused WhatsApp Web client
+Exec=/run/media/veinnn/PENS/Project/apps/walite/src-linux/run.sh
+Icon=/run/media/veinnn/PENS/Project/apps/walite/src-tauri/icons/icon.png
+Terminal=false
+Type=Application
+Categories=Network;InstantMessaging;Chat;
+StartupWMClass=WaLite

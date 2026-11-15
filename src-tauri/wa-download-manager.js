@@ -4,6 +4,174 @@
   if (window.__WALITE_DM_INITIALIZED__) return;
   window.__WALITE_DM_INITIALIZED__ = true;
 
+  // Linux WebKitGTK blob media buffer patch (fixes bogus MP4 atoms, corrupted H.264/AAC frames):
+  // 1. A `blob:` video loaded with `preload=auto` (the default) is read through a buffering queue that
+  //    hands the demuxer corrupted bytes: bogus MP4 atoms, broken H.264 and AAC frames, format not supported.
+  //    With `preload=metadata` the same blob is read cleanly without atom corruption.
+  // 2. With `preload=metadata` the element stops at HAVE_FUTURE_DATA; synthesize `canplaythrough` when readyState >= 3.
+  // 3. WebKit produces no frames for a detached video; park it in a near-invisible box for canvas thumbnailing.
+  // 4. WhatsApp hands video blobs to <img> tags which causes memory leaks; reject video URLs on <img>.
+  (function initWebKitBlobMediaPatch() {
+    try {
+      var MP = HTMLMediaElement.prototype;
+      var src = Object.getOwnPropertyDescriptor(MP, "src");
+      var pre = Object.getOwnPropertyDescriptor(MP, "preload");
+      var rs = Object.getOwnPropertyDescriptor(MP, "readyState");
+      if (!src || !pre || !rs || !src.set || !pre.set || !rs.get) return;
+      var setAttr = Element.prototype.setAttribute;
+      var isBlob = function (u) { return typeof u === "string" && u.slice(0, 5) === "blob:"; };
+
+      var PARK = "position:fixed;left:0;top:0;width:64px;height:36px;overflow:hidden;opacity:0.004;pointer-events:none;z-index:2147483646";
+      function park(el) {
+        if (!(el instanceof HTMLVideoElement) || el.isConnected || el.parentNode || !document.body) return;
+        var box = document.createElement("div");
+        setAttr.call(box, "data-walite", "video-park");
+        setAttr.call(box, "aria-hidden", "true");
+        box.style.cssText = PARK;
+        box.appendChild(el);
+        document.body.appendChild(box);
+        var observer = null, finished = false;
+        var release = function () {
+          if (finished) return;
+          if (box.firstChild === el && isBlob(src.get.call(el))) return;
+          finished = true;
+          el.removeEventListener("emptied", release, true);
+          if (observer) observer.disconnect();
+          if (box.firstChild === el) box.removeChild(el);
+          if (box.parentNode) box.parentNode.removeChild(box);
+        };
+        el.addEventListener("emptied", release, true);
+        if (typeof MutationObserver === "function") {
+          observer = new MutationObserver(release);
+          observer.observe(box, { childList: true });
+        }
+      }
+
+      var armed = new WeakSet();
+      var savedPreload = new WeakMap();
+      function arm(el) {
+        if (!savedPreload.has(el)) savedPreload.set(el, el.getAttribute("preload"));
+        if (pre.get.call(el) !== "none") pre.set.call(el, "metadata");
+        park(el);
+        if (armed.has(el)) return;
+        armed.add(el);
+        var synthesized = false, real = false;
+        el.addEventListener("emptied", function () { synthesized = false; real = false; }, true);
+        el.addEventListener("canplaythrough", function (e) {
+          if (!e.isTrusted) return;
+          if (synthesized) { e.stopImmediatePropagation(); return; }
+          real = true;
+        }, true);
+        el.addEventListener("canplay", function (e) {
+          if (!e.isTrusted) return;
+          setTimeout(function () {
+            if (real || synthesized || !isBlob(src.get.call(el)) || rs.get.call(el) < 3) return;
+            synthesized = true;
+            el.dispatchEvent(new Event("canplaythrough"));
+          }, 0);
+        }, true);
+      }
+      function disarm(el) {
+        if (!savedPreload.has(el)) return;
+        var was = savedPreload.get(el);
+        savedPreload.delete(el);
+        if (was === null) el.removeAttribute("preload"); else setAttr.call(el, "preload", was);
+      }
+      Object.defineProperty(MP, "src", {
+        configurable: true, enumerable: src.enumerable, get: src.get,
+        set: function (v) {
+          try { if (isBlob(String(v))) arm(this); else disarm(this); } catch (e) {}
+          return src.set.call(this, v);
+        },
+      });
+      Object.defineProperty(MP, "preload", {
+        configurable: true, enumerable: pre.enumerable, get: pre.get,
+        set: function (v) {
+          try {
+            if (isBlob(src.get.call(this))) {
+              savedPreload.set(this, String(v));
+              if (String(v).toLowerCase() !== "none") v = "metadata";
+            }
+          } catch (e) {}
+          return pre.set.call(this, v);
+        },
+      });
+      Object.defineProperty(MP, "readyState", {
+        configurable: true, enumerable: rs.enumerable,
+        get: function () {
+          var v = rs.get.call(this);
+          try { if (v === 3 && armed.has(this) && isBlob(src.get.call(this))) return 4; } catch (e) {}
+          return v;
+        },
+      });
+
+      var videoUrls = new Map(), MAX_URLS = 512;
+      var createURL = URL.createObjectURL, revokeURL = URL.revokeObjectURL;
+      URL.createObjectURL = function (blob) {
+        var url = createURL.apply(this, arguments);
+        try {
+          if (blob && /^video\//i.test(blob.type || "")) {
+            if (videoUrls.size >= MAX_URLS) videoUrls.delete(videoUrls.keys().next().value);
+            videoUrls.set(url, true);
+          }
+        } catch (e) {}
+        return url;
+      };
+      URL.revokeObjectURL = function (url) {
+        try { videoUrls.delete(url); } catch (e) {}
+        if (typeof url === 'string' && url.startsWith('blob:')) {
+          setTimeout(function () {
+            try { revokeURL.call(URL, url); } catch (_) {}
+          }, 300000);
+          return;
+        }
+        return revokeURL.apply(this, arguments);
+      };
+      if (window.webkitURL && window.webkitURL.revokeObjectURL) {
+        window.webkitURL.revokeObjectURL = URL.revokeObjectURL;
+      }
+      var NOT_AN_IMAGE = "data:image/png;base64,AAAA";
+      var IP = HTMLImageElement.prototype;
+      var isrc = Object.getOwnPropertyDescriptor(IP, "src");
+      var refused = new WeakMap();
+      if (isrc && isrc.set) {
+        Object.defineProperty(IP, "src", {
+          configurable: true, enumerable: isrc.enumerable,
+          get: function () { return refused.has(this) ? refused.get(this) : isrc.get.call(this); },
+          set: function (v) {
+            try {
+              if (videoUrls.has(String(v))) {
+                refused.set(this, String(v));
+                return isrc.set.call(this, NOT_AN_IMAGE);
+              }
+              refused.delete(this);
+            } catch (e) {}
+            return isrc.set.call(this, v);
+          },
+        });
+      }
+
+      Element.prototype.setAttribute = function (name, value) {
+        try {
+          var n = String(name).toLowerCase();
+          if (this instanceof HTMLMediaElement) {
+            if (n === "src") { if (isBlob(String(value))) arm(this); else disarm(this); }
+            else if (n === "preload" && isBlob(src.get.call(this))) {
+              savedPreload.set(this, String(value));
+              if (String(value).toLowerCase() !== "none") value = "metadata";
+            }
+          } else if (n === "src" && this instanceof HTMLImageElement) {
+            if (videoUrls.has(String(value))) {
+              refused.set(this, String(value));
+              value = NOT_AN_IMAGE;
+            } else refused.delete(this);
+          }
+        } catch (e) {}
+        return setAttr.call(this, name, value);
+      };
+    } catch (_) {}
+  })();
+
   const WALITE_ICON = 'data:image/png;base64,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';
   const TEAL = '#00a884';
 
@@ -300,11 +468,16 @@
         }
       }
 
-      // External link check: open in default browser
+      // External link check: open in default browser (exclude WhatsApp internal services like Flows & PDF viewer)
       if (href && (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('tel:'))) {
         try {
           const u = new URL(href, window.location.href);
-          if (u.hostname !== 'web.whatsapp.com') {
+          const isInternal =
+            u.hostname === 'web.whatsapp.com' ||
+            u.hostname.endsWith('.whatsapp.com') ||
+            u.hostname.endsWith('.whatsapp.net') ||
+            u.hostname.endsWith('.fbcdn.net');
+          if (!isInternal) {
             e.preventDefault();
             e.stopPropagation();
             window.open(u.href, '_blank');
@@ -314,15 +487,145 @@
     }
   }, true);
 
-  // Brand Notifications as WaLite and set Logo Icon
+  // Walite Navigation & Quick-Reply Bridge
+  function dispatchWaliteAction(action, params) {
+    try {
+      const q = new URLSearchParams(params || {}).toString();
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = 'walite-action://' + action + (q ? ('?' + q) : '');
+      (document.body || document.documentElement).appendChild(iframe);
+      setTimeout(() => {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, 100);
+    } catch (e) {
+      console.warn('[WaLite] Action dispatch error:', e);
+    }
+  }
+
+  if (!window.__walite_open_chat) {
+    window.__walite_open_chat = function (title, jid) {
+      if (!title || title === 'WhatsApp') return false;
+      const mainHeader = document.querySelector('#main header');
+      if (mainHeader && (mainHeader.textContent.includes(title) || (jid && mainHeader.innerHTML.includes(jid.split('@')[0])))) {
+        return true;
+      }
+      const escaped = CSS.escape(title);
+      let span = document.querySelector(`#pane-side span[title="${escaped}"]`);
+      if (!span) {
+        const allSpans = document.querySelectorAll('#pane-side [role="row"] span[dir="auto"]');
+        for (const s of allSpans) {
+          if (s.textContent.trim().toLowerCase() === title.trim().toLowerCase()) {
+            span = s;
+            break;
+          }
+        }
+      }
+      if (span) {
+        const row = span.closest('[role="row"]') || span.closest('div[tabindex]');
+        if (row) {
+          row.click();
+          return true;
+        }
+      }
+      const searchBox = document.querySelector('div[contenteditable="true"][data-tab="3"]');
+      if (searchBox) {
+        searchBox.focus();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, title);
+        searchBox.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: title }));
+        setTimeout(() => {
+          const firstRow = document.querySelector('#pane-side [role="row"]');
+          if (firstRow) firstRow.click();
+        }, 350);
+        return true;
+      }
+      return false;
+    };
+  }
+
+  if (!window.__walite_send_reply) {
+    window.__walite_send_reply = function (title, tag, text) {
+      if (!text || !text.trim()) return;
+      if (window.__walite_open_chat) {
+        window.__walite_open_chat(title, tag);
+      }
+      let attempts = 0;
+      function trySend() {
+        attempts++;
+        const footer = document.querySelector('#main footer');
+        if (!footer) {
+          if (attempts < 20) setTimeout(trySend, 150);
+          return;
+        }
+        const box = footer.querySelector('[contenteditable="true"]');
+        if (!box) {
+          if (attempts < 20) setTimeout(trySend, 150);
+          return;
+        }
+        box.focus();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, text);
+        box.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: text }));
+
+        setTimeout(() => {
+          const sendBtn = footer.querySelector('button[aria-label*="Kirim"], button[aria-label*="Send"], [data-testid="send"]') ||
+                          footer.querySelector('span[data-icon="send"]')?.closest('button');
+          if (sendBtn) {
+            sendBtn.click();
+          } else {
+            box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+          }
+        }, 200);
+      }
+      setTimeout(trySend, 250);
+    };
+  }
+
+  // Brand Notifications as WaLite and set Logo Icon & Quick-Reply Toast
   if ('Notification' in window) {
     const OriginalNotification = window.Notification;
+    const isWindows = typeof navigator !== 'undefined' && (/Win/i.test(navigator.platform || '') || /Windows/i.test(navigator.userAgent || ''));
     const isLinux = typeof navigator !== 'undefined' && (/Linux|X11/i.test(navigator.userAgent) || /Linux/i.test(navigator.platform || ''));
+
     window.Notification = function (title, options) {
       options = options || {};
-      const appTitle = title ? ('WaLite • ' + title) : 'WaLite';
-      // On Linux WebKitGTK / D-Bus (org.freedesktop.Notifications),
-      // passing a base64 data URI violates FreeDesktop specs and causes D-Bus timeouts & UI freezes.
+      const rawTitle = (title || 'WhatsApp').trim();
+      const rawBody = (options.body || '').trim();
+      const rawTag = (options.tag || '').trim();
+      const rawIcon = (options.icon || '').trim();
+
+      // On Windows, dispatch to WaLite Quick-Reply Toast window
+      if (isWindows) {
+        dispatchWaliteAction('notify', {
+          title: rawTitle,
+          body: rawBody,
+          icon: rawIcon,
+          tag: rawTag
+        });
+
+        const dummyNotif = {
+          title: rawTitle,
+          body: rawBody,
+          tag: rawTag,
+          icon: rawIcon,
+          onclick: null,
+          onclose: null,
+          onerror: null,
+          close: function () {
+            dispatchWaliteAction('close-toast', {});
+          },
+          addEventListener: function (type, listener) {
+            if (type === 'click') this.onclick = listener;
+            if (type === 'close') this.onclose = listener;
+          },
+          removeEventListener: function () {}
+        };
+        window.__active_walite_notification = dummyNotif;
+        return dummyNotif;
+      }
+
+      const appTitle = rawTitle ? ('WaLite • ' + rawTitle) : 'WaLite';
       if (!isLinux) {
         if (!options.icon || options.icon.includes('whatsapp') || options.icon.includes('blob:')) {
           options.icon = WALITE_ICON;
@@ -397,7 +700,7 @@
     });
   }
 
-  // Debounce runner to prevent CPU thrashing when receiving rapid chats or status updates
+  // Debounce runner to prevent CPU thrashing
   let upsellDebounceTimer = null;
   function scheduleRemoveDesktopUpsell() {
     if (upsellDebounceTimer) return;
@@ -408,23 +711,11 @@
       } else {
         removeDesktopUpsell();
       }
-    }, 2500);
+    }, 4000);
   }
 
-  setInterval(removeDesktopUpsell, 5000);
+  setInterval(removeDesktopUpsell, 10000);
   document.addEventListener('DOMContentLoaded', removeDesktopUpsell);
-  const obs = new MutationObserver((mutations) => {
-    // Only trigger if mutations happen outside the main chat message viewport
-    for (let i = 0; i < mutations.length; i++) {
-      const target = mutations[i].target;
-      if (target && target.closest && target.closest('#main')) {
-        continue;
-      }
-      scheduleRemoveDesktopUpsell();
-      break;
-    }
-  });
-  if (document.body) obs.observe(document.body, { childList: true, subtree: true });
 
   // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
   (function initCursorEnhancer() {
@@ -433,42 +724,20 @@
       const style = document.createElement('style');
       style.id = 'wl-cursor-enhancer';
       style.textContent = `
-        /* Enforce visible mouse pointer across WhatsApp Web & Chat (#main) */
-        body, #app, #main { cursor: default; }
+        /* Enforce visible mouse pointer across WhatsApp Web */
+        body, #app, #main, #pane-side { cursor: default; }
         [style*="cursor: none"], [style*="cursor:none"] { cursor: default !important; }
-        #main,
-        #main :is([role="row"], .message-in, .message-out, [data-testid*="msg"], .copyable-text, .selectable-text, [data-pre-plain-text]) {
-          cursor: default !important;
-        }
-        #main :is(button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"]) {
+        button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"] {
           cursor: pointer !important;
         }
-        #main footer :is([contenteditable="true"], [role="textbox"], input, textarea) {
+        footer :is([contenteditable="true"], [role="textbox"], input, textarea) {
           cursor: text !important;
         }
-        #pane-side {
-          cursor: default;
-        }
-        #pane-side :is([role="row"], [role="listitem"], [data-testid*="cell-frame"]) {
-          cursor: pointer !important;
-        }
 
-        /* Permanently suppress WhatsApp desktop upsell banners outside chat messages */
-        :is(#side, #app, header, aside, [role="navigation"]) :is(
-          [data-testid*="banner"],
-          [data-testid*="upsell"],
-          div:has(> a[href*="whatsapp.com/download"]),
-          div:has(a[href*="aka.ms/uwp"]),
-          div:has(span[data-icon="windows"]),
-          div:has(span[data-icon="microsoft"])
-        ):not(#main *):not([role="row"] *) {
+        /* Suppress WhatsApp desktop upsell banners */
+        [data-testid*="banner"]:not(#main *):not([role="row"] *),
+        [data-testid*="upsell"]:not(#main *):not([role="row"] *) {
           display: none !important;
-          height: 0 !important;
-          max-height: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: hidden !important;
-          pointer-events: none !important;
         }
       `;
       (document.head || document.documentElement).appendChild(style);
@@ -482,8 +751,8 @@
     document.addEventListener('DOMContentLoaded', injectCursorStyle);
   })();
 
-  // Polyfill window.chrome for WebKitGTK to ensure full compatibility with Chrome User-Agent
-  if (typeof window.chrome === 'undefined') {
+  // Polyfill window.chrome for WebKitGTK when using Chrome User-Agent
+  if (navigator.userAgent.includes('Chrome') && typeof window.chrome === 'undefined') {
     window.chrome = {
       app: {
         isInstalled: false,
@@ -503,62 +772,111 @@
     };
   }
 
-  // Linux WebKitGTK Media & Video Status Enhancer:
-  // Ensures HTML5 videos, status playback, and voice notes decode smoothly without freezing the JS loop
-  (function initMediaEnhancer() {
-    function enhanceVideoElement(video) {
-      if (!video || video.__wl_enhanced) return;
-      video.__wl_enhanced = true;
-      video.playsInline = true;
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', '');
-      // Catch and absorb unhandled play promise rejections that would otherwise crash/freeze the event loop
-      const origPlay = video.play;
-      if (typeof origPlay === 'function') {
-        video.play = function () {
-          const res = origPlay.apply(this, arguments);
-          if (res && typeof res.catch === 'function') {
-            res.catch(() => {});
-          }
-          return res;
-        };
-      }
+  // Web Audio Context Fix:
+  // Automatically resumes any AudioContext that WebKitGTK suspends by default,
+  // ensuring audio plays immediately and doesn't starve or freeze the GStreamer media pipeline
+  (function initAudioContextFix() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const contexts = new Set();
+    function resumeAll() {
+      contexts.forEach((ctx) => {
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+      });
     }
 
-    document.addEventListener(
-      'play',
+    try {
+      class PatchedAudioContext extends AudioCtx {
+        constructor(...args) {
+          super(...args);
+          contexts.add(this);
+          if (this.state === 'suspended') {
+            this.resume().catch(() => {});
+          }
+          this.addEventListener('statechange', () => {
+            if (this.state === 'suspended') {
+              this.resume().catch(() => {});
+            }
+          });
+        }
+      }
+      window.AudioContext = PatchedAudioContext;
+      if (window.webkitAudioContext) window.webkitAudioContext = PatchedAudioContext;
+    } catch (_) {}
+
+    ['click', 'pointerdown', 'keydown', 'play'].forEach((evt) => {
+      window.addEventListener(evt, resumeAll, true);
+    });
+  })();
+
+  // Linux WebKitGTK Media & Video Enhancer:
+  // Ensures HTML5 videos, status playback, and voice notes decode smoothly with inline playback and unmuted sound
+  (function initMediaEnhancer() {
+    function enhanceVideo(v) {
+      if (!v) return;
+      try {
+        v.playsInline = true;
+        v.setAttribute('playsinline', '');
+        v.setAttribute('webkit-playsinline', '');
+        // Ensure status and chat videos are unmuted so audio plays through system speakers
+        if (v.muted) {
+          v.muted = false;
+        }
+        if (v.volume < 1) {
+          v.volume = 1.0;
+        }
+      } catch (_) {}
+    }
+
+    window.addEventListener(
+      'error',
       function (e) {
         if (e.target && e.target.tagName === 'VIDEO') {
-          enhanceVideoElement(e.target);
+          const v = e.target;
+          const err = v.error;
+          console.error('[WaLite Video Error]', err ? `Code: ${err.code}, Msg: ${err.message}` : e);
         }
       },
       true
     );
 
-    // Scan for status and chat video elements
-    const mediaObserver = new MutationObserver((mutations) => {
-      for (let i = 0; i < mutations.length; i++) {
-        const addedNodes = mutations[i].addedNodes;
-        for (let j = 0; j < addedNodes.length; j++) {
-          const node = addedNodes[j];
-          if (node.nodeType === 1) {
-            if (node.tagName === 'VIDEO') {
-              enhanceVideoElement(node);
-            } else if (typeof node.querySelectorAll === 'function') {
-              node.querySelectorAll('video').forEach(enhanceVideoElement);
-            }
-          }
+    document.addEventListener(
+      'play',
+      function (e) {
+        if (e.target && e.target.tagName === 'VIDEO') {
+          const v = e.target;
+          enhanceVideo(v);
+          // WhatsApp Web's status viewer often sets muted = true right after mount;
+          // re-unmute after a micro-delay to guarantee audio playback without synthetic button clicks
+          setTimeout(() => {
+            try {
+              if (v.muted) v.muted = false;
+              if (v.volume < 1) v.volume = 1.0;
+            } catch (_) {}
+          }, 100);
         }
-      }
-    });
+      },
+      true
+    );
 
-    if (document.body) {
-      mediaObserver.observe(document.body, { childList: true, subtree: true });
-    } else {
-      document.addEventListener('DOMContentLoaded', () => {
-        if (document.body) mediaObserver.observe(document.body, { childList: true, subtree: true });
-      });
-    }
+    document.addEventListener(
+      'loadedmetadata',
+      function (e) {
+        if (e.target && e.target.tagName === 'VIDEO') {
+          const v = e.target;
+          enhanceVideo(v);
+          setTimeout(() => {
+            try {
+              if (v.muted) v.muted = false;
+              if (v.volume < 1) v.volume = 1.0;
+            } catch (_) {}
+          }, 100);
+        }
+      },
+      true
+    );
   })();
 
   // Linux & WebKitGTK drag-and-drop enhancer:

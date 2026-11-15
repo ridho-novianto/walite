@@ -8,7 +8,7 @@
 [![Tauri Version](https://img.shields.io/badge/Tauri-v2.12-24C8DB?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-1.98%2B-DEA584?style=for-the-badge&logo=rust&logoColor=black)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010%20%7C%20Linux-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ridho-novianto/walite/releases)
-[![Engine](https://img.shields.io/badge/Engine-WebView2%20%7C%20WebKitGTK-008AD7?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/ridho-novianto/walite/releases)
+[![Engine](https://img.shields.io/badge/Engine-WebView2%20%7C%20QtWebEngine-008AD7?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/ridho-novianto/walite/releases)
 [![Binary Size](https://img.shields.io/badge/Binary-3.24%20MB-success?style=for-the-badge)](https://github.com/ridho-novianto/walite/releases)
 [![Installer Size](https://img.shields.io/badge/Installer-1.16%20MB-4CAF50?style=for-the-badge)](https://github.com/ridho-novianto/walite/releases)
 [![License](https://img.shields.io/badge/License-MIT-34937F?style=for-the-badge)](LICENSE)
