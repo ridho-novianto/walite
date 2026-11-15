@@ -58,7 +58,6 @@ jobs:
   build-linux:
     name: Build Linux (QtWebEngine AppImage)
     runs-on: ubuntu-22.04
-    needs: build-windows
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -137,11 +136,17 @@ jobs:
           tar -czvf "WaLite_${VERSION}_linux_x86_64.tar.gz" "$TAR_DIR"
 
       - name: Upload Linux Assets to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            WaLite_*_amd64.AppImage
-            WaLite_*_linux_x86_64.tar.gz
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="0.2.0"
+          for i in $(seq 1 18); do
+            if gh release view "v${VERSION}" >/dev/null 2>&1; then
+              echo "Release v${VERSION} found!"
+              break
+            fi
+            echo "Waiting for release v${VERSION} to be ready... ($i/18)"
+            sleep 10
+          done
+          gh release upload "v${VERSION}" WaLite_*_amd64.AppImage WaLite_*_linux_x86_64.tar.gz --clobber
