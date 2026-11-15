@@ -137,15 +137,20 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
             let tag = params.get("tag").cloned().unwrap_or_default();
 
             if let Some(toast_win) = app.get_webview_window("toast") {
+                let mut toast_w = 380;
+                let mut toast_h = 135;
+                let mut x = 100;
+                let mut y = 100;
+
                 if let Ok(Some(monitor)) = app.primary_monitor() {
                     let scale = monitor.scale_factor();
                     let size = monitor.size();
-                    let toast_w = (380.0 * scale) as i32;
-                    let toast_h = (135.0 * scale) as i32;
+                    toast_w = (380.0 * scale) as i32;
+                    toast_h = (135.0 * scale) as i32;
                     let margin_x = (20.0 * scale) as i32;
                     let margin_y = (60.0 * scale) as i32;
-                    let x = size.width as i32 - toast_w - margin_x;
-                    let y = size.height as i32 - toast_h - margin_y;
+                    x = size.width as i32 - toast_w - margin_x;
+                    y = size.height as i32 - toast_h - margin_y;
                     let _ = toast_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
                 }
 
@@ -159,19 +164,33 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                 );
                 let _ = toast_win.eval(&js);
 
+                let _ = toast_win.show();
+                let _ = toast_win.unminimize();
+
                 #[cfg(target_os = "windows")]
                 if let Ok(hwnd) = toast_win.hwnd() {
                     unsafe {
                         #[link(name = "user32")]
                         extern "system" {
                             fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+                            fn SetWindowPos(
+                                hWnd: *mut std::ffi::c_void,
+                                hWndInsertAfter: *mut std::ffi::c_void,
+                                X: i32,
+                                Y: i32,
+                                cx: i32,
+                                cy: i32,
+                                uFlags: u32,
+                            ) -> i32;
                         }
+                        const HWND_TOPMOST: *mut std::ffi::c_void = -1isize as *mut std::ffi::c_void;
+                        const SWP_NOACTIVATE: u32 = 0x0010;
+                        const SWP_SHOWWINDOW: u32 = 0x0040;
                         const SW_SHOWNOACTIVATE: i32 = 4;
                         ShowWindow(hwnd.0, SW_SHOWNOACTIVATE);
+                        SetWindowPos(hwnd.0, HWND_TOPMOST, x, y, toast_w, toast_h, SWP_SHOWWINDOW | SWP_NOACTIVATE);
                     }
                 }
-                #[cfg(not(target_os = "windows"))]
-                let _ = toast_win.show();
             }
         }
         "open-chat" => {

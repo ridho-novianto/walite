@@ -70,6 +70,9 @@ WaLite v0.2.0 merupakan rilis besar (*major stable update*) yang menghadirkan pe
   * Menambahkan rule fallback anti-blur: `html.wl-overall-active:not(.wl-blur-input) #main footer, html.wl-overall-active:not(.wl-blur-input) #main footer * { filter: none !important; }`.
   * Memperbaiki hover unblur pada elemen stiker WhatsApp (`[data-testid*="sticker"]`) yang sebelumnya tidak merespons pseudo-class `:hover` induk.
 * **Windows (Tauri v2 + WebView2)**:
+  * Memulihkan visibilitas kursor mouse (*mouse pointer*) di area obrolan `#main` dan saat mengetik melalui enhancer kursor persisten (`wl-cursor-enhancer`), memastikan kursor tidak pernah hilang atau menjadi tak terlihat.
+  * Mengintersepsi `ServiceWorkerRegistration.prototype.showNotification` dan mem-polyfill `Notification.permission` agar selalu berstatus `'granted'`, menjamin setiap pesan masuk selalu memicu kartu notifikasi mengambang (*floating toast*) tanpa terlewat.
+  * Menegakkan Win32 `SetWindowPos` dengan flag `HWND_TOPMOST` dan `SWP_SHOWWINDOW | SWP_NOACTIVATE` agar kartu notifikasi mengambang selalu tampil di atas jendela lain tanpa mencuri fokus ketikan aktif.
   * Mengganti mekanisme `iframe` dengan IPC langsung (`window.__TAURI_INTERNALS__.invoke('walite_action')` & Tauri invoke handler) yang kebal terhadap Content-Security-Policy (CSP) WhatsApp Web, memastikan kartu notifikasi toast melayang, Balas Cepat (Quick Reply), dan *click-to-chat* berjalan 100% mulus.
   * Menambahkan Win32 `SetForegroundWindow` dan `BringWindowToTop` saat notifikasi diklik agar WaLite langsung melompat ke depan layar pengguna.
   * Memperbarui dispatcher klik obrolan (`__walite_open_chat`) dengan simulasi event mouse lengkap (`mousedown` + `mouseup` + `click`) yang kompatibel dengan event handler React 18.

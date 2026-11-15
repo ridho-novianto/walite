@@ -675,14 +675,76 @@
     };
     Object.assign(window.Notification, OriginalNotification);
     window.Notification.prototype = OriginalNotification.prototype;
-    if (OriginalNotification.permission) {
-      try {
-        Object.defineProperty(window.Notification, 'permission', {
-          get: () => OriginalNotification.permission
-        });
-      } catch (_) {}
+
+    try {
+      Object.defineProperty(window.Notification, 'permission', {
+        get: () => 'granted',
+        configurable: true
+      });
+      window.Notification.requestPermission = function (cb) {
+        const p = Promise.resolve('granted');
+        if (typeof cb === 'function') cb('granted');
+        return p;
+      };
+    } catch (_) {}
+
+    // Intercept ServiceWorker showNotification to route to WaLite Quick-Reply Toast
+    if (typeof ServiceWorkerRegistration !== 'undefined' && ServiceWorkerRegistration.prototype.showNotification) {
+      const origShowNotification = ServiceWorkerRegistration.prototype.showNotification;
+      ServiceWorkerRegistration.prototype.showNotification = function (title, options) {
+        try {
+          window.Notification(title, options);
+        } catch (e) {
+          console.warn('[WaLite] SW showNotification error:', e);
+        }
+        return origShowNotification.apply(this, arguments);
+      };
     }
   }
+
+  // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
+  (function initCursorEnhancer() {
+    function injectCursorStyle() {
+      if (document.getElementById('wl-cursor-enhancer')) return;
+      const style = document.createElement('style');
+      style.id = 'wl-cursor-enhancer';
+      style.textContent = `
+        /* Enforce visible mouse pointer across WhatsApp Web & Chat (#main) */
+        * { cursor: auto; }
+        [style*="cursor: none"], [style*="cursor:none"] { cursor: default !important; }
+        #main,
+        #main :is([role="row"], .message-in, .message-out, [data-testid*="msg"], .copyable-text, .selectable-text, [data-pre-plain-text]) {
+          cursor: default !important;
+        }
+        #main :is(button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"]) {
+          cursor: pointer !important;
+        }
+        #main footer :is([contenteditable="true"], [role="textbox"], input, textarea) {
+          cursor: text !important;
+        }
+        #pane-side {
+          cursor: default;
+        }
+        #pane-side :is([role="row"], [role="listitem"], [tabindex="-1"]) {
+          cursor: pointer !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    }
+
+    if (document.head || document.documentElement) {
+      injectCursorStyle();
+    } else {
+      document.addEventListener('DOMContentLoaded', injectCursorStyle);
+    }
+    document.addEventListener('DOMContentLoaded', injectCursorStyle);
+    const cursorObs = new MutationObserver(() => {
+      if (!document.getElementById('wl-cursor-enhancer')) injectCursorStyle();
+    });
+    if (document.documentElement) {
+      cursorObs.observe(document.documentElement, { childList: true, subtree: true });
+    }
+  })();
 
   // Safely Remove Desktop Upsell Banner across WhatsApp Web without freezing the UI thread
   function removeDesktopUpsell() {
