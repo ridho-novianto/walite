@@ -248,6 +248,12 @@
     function sendAction(action, params) {
       params = params || {};
       try {
+        const q = new URLSearchParams(params).toString();
+        window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
+      } catch (e) {
+        console.warn('[WaLite Toast] Action dispatch error:', e);
+      }
+      try {
         if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
           window.__TAURI_INTERNALS__.invoke('walite_action', {
             action: action,
@@ -256,19 +262,9 @@
             icon: params.icon || null,
             tag: params.tag || null,
             text: params.text || null
-          }).catch(function (err) {
-            console.warn('[WaLite Toast] Invoke action error:', err);
-          });
-          return;
+          }).catch(function () {});
         }
       } catch (_) {}
-
-      try {
-        const q = new URLSearchParams(params).toString();
-        window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
-      } catch (e) {
-        console.warn('[WaLite Toast] Action dispatch error:', e);
-      }
     }
 
     function resetTimer(delay = 8000) {
@@ -303,9 +299,7 @@
         fallback.style.display = 'flex';
       }
 
-      const isRealChat = currentTitle !== 'WhatsApp' &&
-                         !body.toLowerCase().includes('uji coba') &&
-                         !body.toLowerCase().includes('test');
+      const isRealChat = Boolean(currentTitle && currentTitle !== 'WhatsApp');
 
       const replyContainer = document.getElementById('replyContainer');
       const replyInput = document.getElementById('replyInput');

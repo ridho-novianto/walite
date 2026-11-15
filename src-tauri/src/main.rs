@@ -159,7 +159,7 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                 let safe_icon = escape_js_str(&icon);
                 let safe_tag = escape_js_str(&tag);
                 let js = format!(
-                    "if (window.showToast) window.showToast('{}', '{}', '{}', '{}');",
+                    "(function(){{function _try(n){{if(typeof window.showToast==='function'){{window.showToast('{}','{}','{}','{}');}}else if(n<30){{setTimeout(function(){{_try(n+1);}},80);}}}} _try(0);}})();",
                     safe_title, safe_body, safe_icon, safe_tag
                 );
                 let _ = toast_win.eval(&js);
@@ -209,9 +209,12 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                     unsafe {
                         #[link(name = "user32")]
                         extern "system" {
+                            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
                             fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
                             fn BringWindowToTop(hWnd: *mut std::ffi::c_void) -> i32;
                         }
+                        const SW_RESTORE: i32 = 9;
+                        ShowWindow(hwnd.0, SW_RESTORE);
                         BringWindowToTop(hwnd.0);
                         SetForegroundWindow(hwnd.0);
                     }

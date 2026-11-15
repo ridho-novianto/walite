@@ -496,8 +496,38 @@
     el.click();
   }
 
+  window.triggerWaliteTestNotification = function () {
+    const testTitle = 'Budi Santoso';
+    const testBody = 'Halo! Ini pesan tes notifikasi dan fitur Balas Cepat WaLite.';
+    const testIcon = WALITE_ICON;
+    const testTag = 'test-msg';
+
+    dispatchWaliteAction('notify', {
+      title: testTitle,
+      body: testBody,
+      icon: testIcon,
+      tag: testTag
+    });
+
+    try {
+      if ('Notification' in window) {
+        new window.Notification(testTitle, {
+          body: testBody,
+          icon: testIcon,
+          tag: testTag
+        });
+      }
+    } catch (_) {}
+  };
+
   function dispatchWaliteAction(action, params) {
     params = params || {};
+    try {
+      const q = new URLSearchParams(params).toString();
+      window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
+    } catch (e) {
+      console.warn('[WaLite] Action dispatch error:', e);
+    }
     try {
       if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
         window.__TAURI_INTERNALS__.invoke('walite_action', {
@@ -507,19 +537,9 @@
           icon: params.icon || null,
           tag: params.tag || null,
           text: params.text || null
-        }).catch(function (err) {
-          console.warn('[WaLite] Invoke action error:', err);
-        });
-        return;
+        }).catch(function () {});
       }
     } catch (_) {}
-
-    try {
-      const q = new URLSearchParams(params).toString();
-      window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
-    } catch (e) {
-      console.warn('[WaLite] Action dispatch error:', e);
-    }
   }
 
   if (!window.__walite_open_chat) {
@@ -702,6 +722,67 @@
     }
   }
 
+  // Auto-detect incoming messages from document.title updates or pane-side unread badges
+  (function initIncomingMessageDetector() {
+    let lastUnreadCount = 0;
+    let lastNotifiedSignature = '';
+    let lastNotifiedTime = 0;
+
+    function checkUnread() {
+      const title = document.title || '';
+      const match = title.match(/^\((\d+)\)\s*(.*)$/);
+      if (match) {
+        const count = parseInt(match[1], 10);
+        if (count > lastUnreadCount) {
+          lastUnreadCount = count;
+          setTimeout(() => {
+            try {
+              const rows = document.querySelectorAll('#pane-side [role="row"], #pane-side [role="listitem"], #pane-side div[tabindex]');
+              for (const r of rows) {
+                const hasBadge = r.querySelector('[aria-label*="unread" i], [aria-label*="belum dibaca" i], [aria-label*="pesan baru" i], ._ak8i, span[data-icon*="unread"]');
+                if (hasBadge) {
+                  const titleEl = r.querySelector('span[title], [dir="auto"], ._ak8q');
+                  const senderName = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent || '').trim() : 'WhatsApp';
+                  const bodyEl = r.querySelector('[dir="ltr"], span:not([title]), ._ak8k');
+                  const msgText = bodyEl ? (bodyEl.textContent || '').trim() : 'Pesan baru diterima';
+                  const imgEl = r.querySelector('img');
+                  const avatarSrc = imgEl ? (imgEl.src || '') : '';
+
+                  const sig = senderName + '::' + msgText;
+                  const now = Date.now();
+                  if (sig !== lastNotifiedSignature || (now - lastNotifiedTime > 3000)) {
+                    lastNotifiedSignature = sig;
+                    lastNotifiedTime = now;
+                    dispatchWaliteAction('notify', {
+                      title: senderName,
+                      body: msgText,
+                      icon: avatarSrc,
+                      tag: senderName
+                    });
+                  }
+                  break;
+                }
+              }
+            } catch (err) {
+              console.warn('[WaLite] Unread observer error:', err);
+            }
+          }, 350);
+        } else {
+          lastUnreadCount = count;
+        }
+      } else {
+        lastUnreadCount = 0;
+      }
+    }
+
+    const titleEl = document.querySelector('title');
+    if (titleEl) {
+      const titleObs = new MutationObserver(checkUnread);
+      titleObs.observe(titleEl, { childList: true, characterData: true, subtree: true });
+    }
+    setInterval(checkUnread, 1500);
+  })();
+
   // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
   (function initCursorEnhancer() {
     function injectCursorStyle() {
@@ -808,40 +889,6 @@
 
   setInterval(removeDesktopUpsell, 10000);
   document.addEventListener('DOMContentLoaded', removeDesktopUpsell);
-
-  // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
-  (function initCursorEnhancer() {
-    function injectCursorStyle() {
-      if (document.getElementById('wl-cursor-enhancer')) return;
-      const style = document.createElement('style');
-      style.id = 'wl-cursor-enhancer';
-      style.textContent = `
-        /* Enforce visible mouse pointer across WhatsApp Web */
-        body, #app, #main, #pane-side { cursor: default; }
-        [style*="cursor: none"], [style*="cursor:none"] { cursor: default !important; }
-        button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"] {
-          cursor: pointer !important;
-        }
-        footer :is([contenteditable="true"], [role="textbox"], input, textarea) {
-          cursor: text !important;
-        }
-
-        /* Suppress WhatsApp desktop upsell banners */
-        [data-testid*="banner"]:not(#main *):not([role="row"] *),
-        [data-testid*="upsell"]:not(#main *):not([role="row"] *) {
-          display: none !important;
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    }
-
-    if (document.head || document.documentElement) {
-      injectCursorStyle();
-    } else {
-      document.addEventListener('DOMContentLoaded', injectCursorStyle);
-    }
-    document.addEventListener('DOMContentLoaded', injectCursorStyle);
-  })();
 
   // Polyfill window.chrome for WebKitGTK when using Chrome User-Agent
   if (navigator.userAgent.includes('Chrome') && typeof window.chrome === 'undefined') {

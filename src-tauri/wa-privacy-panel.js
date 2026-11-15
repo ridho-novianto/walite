@@ -54,40 +54,47 @@
   function b64ToU8(b64) { return Uint8Array.from(window.atob(b64), (c) => c.charCodeAt(0)); }
 
   const CSS_RULES = `
+/* Mouse Cursor visibility fix */
+html, body, #app, #main, #main *, #pane-side, #pane-side * { cursor: default !important; }
+:is(button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"], #pane-side :is([role="row"], [role="listitem"], div[tabindex])) { cursor: pointer !important; }
+:is([contenteditable="true"], [role="textbox"], input, textarea, .selectable-text, .copyable-text) { cursor: text !important; }
+
+/* Contact & Group Names */
 html.wl-overall-active.wl-blur-names #pane-side :is([role="row"],[role="listitem"],div[tabindex]) :is([dir="auto"],span[title],._ak8q,._ak8j){filter:blur(8px)!important;}
 html.wl-overall-active.wl-blur-names #pane-side :is([role="row"],[role="listitem"],div[tabindex]):hover :is([dir="auto"],span[title],._ak8q,._ak8j),
 html.wl-overall-active.wl-blur-names #pane-side :is([dir="auto"],span[title],._ak8q,._ak8j):hover{filter:none!important;}
 html.wl-overall-active.wl-blur-names #main header :is([dir="auto"],span[title]){filter:blur(8px)!important;}
 html.wl-overall-active.wl-blur-names #main header:hover :is([dir="auto"],span[title]){filter:none!important;}
 
+/* Profile Pictures */
 html.wl-overall-active.wl-blur-avatars :is(#pane-side,#main header,.message-in,.message-out) :is(img:not([data-plain-text],.emoji,[alt*="emoji"],[data-testid*="emoji"]),canvas,[data-testid*="avatar"],[data-testid*="status"],[aria-label*="status" i] :is(img,image,svg,canvas),div[style*="border-radius"] :is(img,image,svg,canvas,span),[data-icon*="default"] :is(svg,[role="img"])){filter:blur(9px)!important;}
 html.wl-overall-active.wl-blur-avatars #pane-side :is([role="row"],[role="listitem"],div[tabindex]):hover :is(img,canvas,[data-testid*="avatar"],[data-testid*="status"],div[style*="border-radius"] *),
 html.wl-overall-active.wl-blur-avatars #main header:hover :is(img,canvas,[data-testid*="avatar"]),
 html.wl-overall-active.wl-blur-avatars :is(img,canvas,[data-testid*="avatar"],[data-testid*="status"]):hover{filter:none!important;}
 
+/* Last Messages Preview in Pane-side */
 html.wl-overall-active.wl-blur-lastmsg #pane-side :is([role="row"],[role="listitem"],div[tabindex]) :is([dir="ltr"],span:not([title]),._ak8k){filter:blur(6px)!important;}
 html.wl-overall-active.wl-blur-lastmsg #pane-side :is([role="row"],[role="listitem"],div[tabindex]):hover :is([dir="ltr"],span:not([title]),._ak8k){filter:none!important;}
 
-html.wl-overall-active.wl-blur-messages #main div[role="row"] :is(.message-in,.message-out,div[data-testid*="msg-container"],[data-id]) :is(.selectable-text,[data-pre-plain-text],[data-testid*="msg-text"],span[dir="ltr"],span[dir="rtl"]){filter:blur(8px)!important;}
+/* All Messages in Active Chat Room (#main) */
+html.wl-overall-active.wl-blur-messages #main div[role="row"] :is(.message-in,.message-out,div[data-testid*="msg-container"],[data-id]) :is(.selectable-text,.copyable-text,[data-pre-plain-text],[data-testid*="msg-text"],span[dir="ltr"],span[dir="rtl"],div[role="button"],[data-testid*="media"],[data-testid*="audio"],[data-testid*="video"],[data-testid*="sticker"],[data-testid*="document"],[data-testid*="doc"],[data-testid*="file"],[data-testid*="attachment"],img:not([alt*="emoji"],[data-plain-text],.emoji),video){filter:blur(8px)!important;}
+html.wl-overall-active.wl-blur-messages #main div[role="row"]:hover :is(.message-in,.message-out,div[data-testid*="msg-container"],[data-id]) *{filter:none!important;}
 
+/* Media Preview (Photos, Videos, Audio, Stickers, Docs) in #main */
 html.wl-overall-active.wl-blur-media #main div[role="row"] :is([data-testid*="media"],[data-testid*="audio"],[data-testid*="video"],[data-testid*="sticker"],[data-testid*="document"],[data-testid*="doc"],[data-testid*="file"],[data-testid*="attachment"],div:has(> span[data-icon*="document"]),div:has(> span[data-icon*="attach"]),div:has(> span[data-icon*="audio-file"]),img:not([alt*="emoji"],[data-plain-text],.emoji,[data-testid*="emoji"]),video,canvas){filter:blur(12px)!important;}
+html.wl-overall-active.wl-blur-media #main div[role="row"]:hover :is([data-testid*="media"],[data-testid*="audio"],[data-testid*="video"],[data-testid*="sticker"],[data-testid*="document"],[data-testid*="doc"],[data-testid*="file"],[data-testid*="attachment"],img,video,canvas){filter:none!important;}
 
-html.wl-overall-active.wl-blur-messages #main div[role="row"] :is([data-testid*="document"],[data-testid*="doc"],[data-testid*="file"],[data-testid*="attachment"],div:has(> span[data-icon*="document"]),div:has(> span[data-icon*="attach"]),div:has(> span[data-icon*="audio-file"]),[data-testid*="sticker"],[data-testid*="media"],[data-testid*="audio"],[data-testid*="video"],img:not([alt*="emoji"],[data-plain-text],.emoji,[data-testid*="emoji"]),video){filter:blur(10px)!important;}
-
-html.wl-overall-active #main div[role="row"]:hover :is(.message-in,.message-out,div[data-testid*="msg-container"],[data-id]) *,
-html.wl-overall-active #main :is(.message-in,.message-out,div[data-testid*="msg-container"],[data-id]):hover,
-html.wl-overall-active #main :is(.message-in,.message-out,div[data-testid*="msg-container"],[data-id]):hover *,
-html.wl-overall-active #main :is([data-testid*="sticker"],[data-testid*="media"],[data-testid*="document"],[data-testid*="file"],[data-testid*="attachment"],img,video,canvas):hover,
-html.wl-overall-active #main :is([data-testid*="sticker"],[data-testid*="media"],[data-testid*="document"],[data-testid*="file"],[data-testid*="attachment"],img,video,canvas):hover *{filter:none!important;}
-
+/* Compose Input in Footer */
 html.wl-overall-active:not(.wl-blur-input) #main footer,html.wl-overall-active:not(.wl-blur-input) #main footer *{filter:none!important;}
 html.wl-overall-active.wl-blur-input #main footer :is([contenteditable="true"],[data-testid*="compose"],div[role="textbox"]){filter:blur(7px)!important;}
 html.wl-overall-active.wl-blur-input #main footer:is(:hover,:focus-within),html.wl-overall-active.wl-blur-input #main footer:is(:hover,:focus-within) *{filter:none!important;}
 
+/* Safety & Cleanup */
 :is([data-testid*="panel-emoji"],[data-testid*="emoji-panel"],[data-testid*="picker"]),:is([data-testid*="panel-emoji"],[data-testid*="emoji-panel"],[data-testid*="picker"]) *{filter:none!important;}
-
 html.wl-overall-active :is(video,canvas,[data-testid*="sticker"],[data-testid*="media"],[data-testid*="document"]){will-change:filter;transform:translateZ(0);}
-#pane-side [data-testid*="upsell"],#pane-side [data-testid*="banner"]{display:none!important;height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;pointer-events:none!important;}`;
+#pane-side [data-testid*="upsell"],#pane-side [data-testid*="banner"]{display:none!important;height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;pointer-events:none!important;}
+.wl-btn-test-notif{margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#00a884 0%,#008f6f 100%);color:#111b21;border:none;border-radius:8px;font-weight:600;font-size:13px;width:100%;padding:10px;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;box-shadow:0 2px 8px rgba(0,168,132,0.3);}
+.wl-btn-test-notif:hover{background:#06cf9c;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,168,132,0.45);}`;
 
   function applyStyles() {
     let s = document.getElementById('walite-privacy-css');
@@ -444,6 +451,29 @@ html.wl-overall-active :is(video,canvas,[data-testid*="sticker"],[data-testid*="
 
     autoLockGroup.append(minInput, autoLockSwitch.container);
     body.appendChild(createRow('Auto lock screen', `Kunci saat idle (${state.autoLockMinutes} mnt)`, autoLockGroup));
+
+    const testNotifBtn = el('button', 'wl-btn-test-notif');
+    const testNotifSvg = createSvg('M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z');
+    testNotifSvg.style.width = '16px';
+    testNotifSvg.style.height = '16px';
+    testNotifSvg.style.fill = '#111b21';
+    testNotifBtn.appendChild(testNotifSvg);
+    testNotifBtn.appendChild(el('span', '', '🔔 Uji Notifikasi (Tes Balas Cepat)'));
+    testNotifBtn.title = 'Uji coba popup notifikasi mengambang dan balas cepat WaLite';
+    testNotifBtn.addEventListener('click', () => {
+      if (typeof window.triggerWaliteTestNotification === 'function') {
+        window.triggerWaliteTestNotification();
+      } else {
+        try {
+          new window.Notification('Budi Santoso', {
+            body: 'Halo! Ini adalah pesan tes notifikasi dan balas cepat dari WaLite.',
+            tag: 'test-notification'
+          });
+        } catch (_) {}
+      }
+    });
+    body.appendChild(testNotifBtn);
+
     const lockBtn = el('button', 'wl-btn-lock');
     const lockBtnSvg = createSvg('M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v2h-2zm0 4h2v6h-2z');
     lockBtnSvg.style.width = '16px';
