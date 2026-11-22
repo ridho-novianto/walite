@@ -65,7 +65,24 @@ Dibandingkan wrapper berbasis Electron konvensional maupun membuka tab browser p
   - Kolom teks pengetikan pesan.
   - Fitur *hover-to-reveal*: elemen otomatis terlihat jelas saat kursor diarahkan, dan kembali kabur saat kursor menjauh.
 - **Layar Kunci Terenkripsi (Screen Lock Overlay):** Pengaman tampilan fisik layar dengan lapisan blur fullscreen (`Alt + X`) berbasis WebCrypto PBKDF2 SHA-256 (100.000 iterasi) dengan salt acak, verifikasi waktu-konstan (*constant-time compare*), jeda eksponensial anti brute-force, dan opsi *Auto-lock* saat sistem idle.
-- **Zero-Network Panel Script:** Skrip `wa-privacy-panel.js` berjalan secara lokal di dalam WebView tanpa dependensi eksternal, tanpa pemanggilan jaringan (`fetch`, `XHR`, `WebSocket`), serta sepenuhnya patuh pada aturan ketat CSP dan Trusted Types (tanpa `innerHTML`).
+- **Zero-Network Panel Script:** Skrip berjalan secara lokal di dalam WebView tanpa dependensi eksternal, tanpa pemanggilan jaringan pelacak, serta sepenuhnya patuh pada aturan ketat CSP dan Trusted Types.
+- **ZapZap-Grade Enhancements (Kloning Lengkap Fitur Unggulan ZapZap):**
+  - **Panel Pengaturan Lengkap Bersekat (`Ctrl + P`):** Panel modal komprehensif dua kolom ala ZapZap (Privasi Visual, Multi-Akun, Tampilan & Zoom, Notifikasi, Jaringan & Proxy, Unduhan, Custom CSS & JS, Pintasan Keyboard, dan Tentang WaLite).
+  - **Multi-Akun Mandiri Terisolasi:** Menjalankan dua sesi WhatsApp nomor berbeda secara berdampingan dengan direktori cache dan sesi terisolasi penuh (`EBWebView_Account2`).
+  - **Notifikasi Native Windows 11/10 (WinRT Action Center):** Notifikasi resmi OS Windows murni yang tersimpan rapi di Pusat Pemberitahuan (*Windows Action Center / Notification Center*). Tidak pernah mencuri fokus keyboard saat sedang mengetik di aplikasi lain.
+  - **Klik Notifikasi Langsung ke Kontak Asal:** Mengklik banner notifikasi otomatis membuka aplikasi dan langsung mengarahkan Anda ke percakapan kontak/grup yang bersangkutan secara instan dan akurat.
+  - **Penyaringan Notifikasi Cerdas:** Hanya menampilkan pesan masuk riil, stiker, media, dan panggilan. Menghilangkan notifikasi tidak perlu seperti centang biru ("Pesan telah dibaca") maupun konfirmasi pesan terkirim.
+  - **Kontrol Privasi Notifikasi Penuh:** Opsi untuk menyembunyikan/menampilkan nama pengirim, pratinjau isi pesan, dan foto profil pada kartu notifikasi (cocok saat presentasi atau di ruang publik).
+  - **Kirim Pesan ke Nomor Baru Tanpa Simpan Kontak (`Ctrl + M`):** Dialog instan untuk memulai obrolan ke nomor telepon mana pun tanpa perlu menambahkan nomor ke buku kontak ponsel.
+  - **Resizable & Compact Chat List (`Ctrl + Alt + C` atau Drag Border):** Lebar daftar percakapan (`#side`) dapat diubah secara bebas dengan menggeser garis batas pemisah (drag handle), atau disusutkan ke mode ringkas (compact avatar) untuk memaksimalkan area obrolan. Ukuran otomatis tersimpan rapi.
+  - **Panduan Pintasan Keyboard Lengkap (`Ctrl + /`):** Modal tabel referensi pintasan tombol keyboard resmi WhatsApp Web dan WaLite.
+  - **Pengontrol Zoom Cepat (`Ctrl + +`, `Ctrl + -`, `Ctrl + 0`):** Zoom in, zoom out, dan reset zoom layar WhatsApp Web dengan mudah (tersedia kontrol tombol di panel shield dan panel pengaturan).
+  - **Smart PDF & Document Direct Download:** Memastikan kartu dokumen dan file PDF langsung dapat diunduh tanpa tertahan oleh dialog viewer tak diinginkan.
+  - **Clipboard Table Formatter:** Saat menempel (*paste*) tabel dari Microsoft Excel / Google Sheets, teks otomatis diformat rapi dengan pembatas kolom bersih di dalam input WhatsApp Web.
+  - **WebRTC IP Leak Shield:** Obfuscator calon ICE WebRTC untuk mencegah kebocoran alamat IP lokal dan publik.
+  - **Ctrl + Arrow Fix & Sound Guard:** Koreksi pergerakan kursor kata per kata di kotak input pesan, serta fitur peredam suara notifikasi saat mode senyap aktif.
+  - **Custom CSS & JavaScript Injection:** Pengguna dapat memasukkan kode CSS dan JavaScript sendiri secara langsung melalui dialog panel WaLite (gaya kustom dan userscript otomatis tersimpan dan aktif setiap kali aplikasi dibuka).
+  - **Pemicu Kunci Bawaan WhatsApp (`Ctrl + Alt + L`):** Integrasi langsung untuk mengunci sesi WhatsApp Web secara instan.
 
 ---
 

@@ -17,79 +17,82 @@
       height: 100%;
       overflow: hidden;
       background: transparent;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     }
     .toast-card {
       width: 100%;
       height: 100%;
-      background: #1f2c34;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      background: rgba(32, 44, 51, 0.95);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
       display: flex;
       flex-direction: column;
-      padding: 10px 12px;
-      color: #e9edef;
+      padding: 12px 14px;
+      color: #ffffff;
       position: relative;
-      transition: border-color 0.2s ease;
+      transition: all 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
     }
     .toast-card:hover {
-      border-color: rgba(0, 168, 132, 0.4);
+      border-color: rgba(0, 168, 132, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 168, 132, 0.2);
     }
     .toast-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 18px;
-      margin-bottom: 6px;
+      height: 16px;
+      margin-bottom: 8px;
     }
     .toast-brand {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
       color: #00a884;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
     }
-    .toast-brand svg {
+    .toast-brand img {
       width: 14px;
       height: 14px;
-      fill: #00a884;
+      border-radius: 3px;
     }
     .toast-close-btn {
       background: transparent;
       border: none;
-      color: #8696a0;
+      color: rgba(255, 255, 255, 0.6);
       cursor: pointer;
-      padding: 2px 4px;
+      padding: 2px;
       border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.15s, background 0.15s;
+      transition: all 0.15s ease;
     }
     .toast-close-btn:hover {
-      color: #f15c6d;
-      background: rgba(241, 92, 109, 0.15);
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.15);
     }
     .toast-content {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       cursor: pointer;
-      padding: 2px 4px;
+      padding: 2px;
       border-radius: 6px;
       transition: background 0.15s;
       flex: 1;
       min-height: 42px;
     }
     .toast-content:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
     }
     .avatar-wrapper {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       overflow: hidden;
       flex-shrink: 0;
@@ -98,6 +101,7 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     }
     .avatar-img {
       width: 100%;
@@ -111,8 +115,8 @@
       display: none;
       align-items: center;
       justify-content: center;
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 16px;
+      font-weight: 600;
       color: #ffffff;
       background: #00a884;
       text-transform: uppercase;
@@ -125,48 +129,70 @@
       gap: 2px;
     }
     .sender-title {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 600;
-      color: #e9edef;
+      color: #f0f2f5;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      letter-spacing: -0.1px;
     }
     .msg-body {
-      font-size: 12px;
-      color: #8696a0;
+      font-size: 12.5px;
+      color: #aebac1;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      line-height: 1.3;
+      line-height: 1.4;
+    }
+    .media-preview-wrapper {
+      width: 42px;
+      height: 42px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-left: 6px;
+    }
+    .media-preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
     .reply-container {
-      margin-top: 6px;
+      margin-top: 8px;
       display: flex;
       align-items: center;
       gap: 6px;
     }
     .reply-input {
       flex: 1;
-      height: 30px;
-      background: #111b21;
-      border: 1px solid #2a3942;
+      height: 32px;
+      background: rgba(17, 27, 33, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 6px;
       padding: 0 10px;
-      color: #e9edef;
-      font-size: 12px;
+      color: #ffffff;
+      font-size: 12.5px;
       outline: none;
-      transition: border-color 0.2s;
+      transition: all 0.2s ease;
     }
     .reply-input:focus {
       border-color: #00a884;
+      background: rgba(17, 27, 33, 1);
+      box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.25);
     }
     .reply-input::placeholder {
-      color: #667781;
+      color: #8696a0;
     }
     .reply-btn {
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       background: #00a884;
       border: none;
       border-radius: 6px;
@@ -175,13 +201,14 @@
       justify-content: center;
       cursor: pointer;
       flex-shrink: 0;
-      transition: background 0.15s, transform 0.1s;
+      transition: all 0.15s ease;
     }
     .reply-btn:hover {
       background: #06cf9c;
+      transform: scale(1.04);
     }
     .reply-btn:active {
-      transform: scale(0.95);
+      transform: scale(0.96);
     }
     .reply-btn svg {
       width: 15px;
@@ -195,8 +222,96 @@
       font-size: 12px;
       color: #00a884;
       font-weight: 600;
-      margin-top: 6px;
-      padding-left: 4px;
+      margin-top: 8px;
+      padding-left: 2px;
+    }
+    .download-container {
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .dl-btn {
+      flex: 1;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .dl-btn:active {
+      transform: scale(0.97);
+    }
+    .dl-btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+    .dl-btn-open {
+      background: #00a884;
+      color: #111b21;
+    }
+    .dl-btn-open:hover {
+      background: #06cf9c;
+    }
+    .dl-btn-folder {
+      background: #111b21;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e9edef;
+    }
+    .dl-btn-folder:hover {
+      background: #202c33;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .call-container {
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .call-btn {
+      flex: 1;
+      height: 34px;
+      border: none;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .call-btn:active {
+      transform: scale(0.97);
+    }
+    .call-btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+    .call-btn-accept {
+      background: #00a884;
+      color: #111b21;
+      box-shadow: 0 2px 8px rgba(0, 168, 132, 0.3);
+    }
+    .call-btn-accept:hover {
+      background: #06cf9c;
+    }
+    .call-btn-decline {
+      background: #ea0038;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(234, 0, 56, 0.3);
+    }
+    .call-btn-decline:hover {
+      background: #ff1a4f;
     }
   </style>
 </head>
@@ -204,8 +319,8 @@
   <div class="toast-card" id="toastCard">
     <div class="toast-header">
       <div class="toast-brand">
-        <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z"/></svg>
-        <span>WaLite</span>
+        <img src="data:image/png;base64,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" style="width:16px;height:16px;object-fit:contain;flex-shrink:0;" alt="WaLite" />
+        <span id="brandText">WaLite</span>
       </div>
       <button class="toast-close-btn" id="btnClose" title="Tutup">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -224,6 +339,9 @@
         <div class="sender-title" id="senderTitle">Pengirim</div>
         <div class="msg-body" id="msgBody">Pesan WhatsApp</div>
       </div>
+      <div class="media-preview-wrapper" id="mediaPreviewWrapper">
+        <img class="media-preview-img" id="mediaPreviewImg" alt="" />
+      </div>
     </div>
 
     <div class="reply-container" id="replyContainer">
@@ -235,6 +353,38 @@
       </button>
     </div>
 
+    <div class="download-container" id="downloadContainer">
+      <button class="dl-btn dl-btn-open" id="btnOpenFile" title="Buka berkas ini">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+        <span>Buka Berkas</span>
+      </button>
+      <button class="dl-btn dl-btn-folder" id="btnOpenFolder" title="Buka folder berkas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Buka Folder</span>
+      </button>
+    </div>
+
+    <div class="call-container" id="callContainer">
+      <button class="call-btn call-btn-accept" id="btnAcceptCall" title="Jawab panggilan">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-2.2 2.2a15.053 15.053 0 0 1-6.59-6.59l2.2-2.21a.96.96 0 0 0 .25-1.01A11.36 11.36 0 0 1 8.5 3.92c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.54c0-.55-.45-1-.99-1z"/>
+        </svg>
+        <span>Jawab</span>
+      </button>
+      <button class="call-btn call-btn-decline" id="btnDeclineCall" title="Tolak panggilan">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 0 1 0-1.41C3.28 8.79 7.42 7 12 7s8.72 1.79 11.71 4.67c.39.39.39 1.02 0 1.41l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+        </svg>
+        <span>Tolak</span>
+      </button>
+    </div>
+
     <div class="status-sent" id="statusSent">
       ✓ Pesan terkirim
     </div>
@@ -243,43 +393,65 @@
   <script>
     let currentTag = '';
     let currentTitle = '';
+    let currentFilePath = '';
+    let currentToastType = 'chat';
     let dismissTimer = null;
 
     function sendAction(action, params) {
       params = params || {};
+      params._t = String(Date.now());
       try {
         const q = new URLSearchParams(params).toString();
         window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
       } catch (e) {
         console.warn('[WaLite Toast] Action dispatch error:', e);
       }
-      try {
-        if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
-          window.__TAURI_INTERNALS__.invoke('walite_action', {
-            action: action,
-            title: params.title || null,
-            body: params.body || null,
-            icon: params.icon || null,
-            tag: params.tag || null,
-            text: params.text || null
-          }).catch(function () {});
-        }
-      } catch (_) {}
     }
 
     function resetTimer(delay = 8000) {
       if (dismissTimer) clearTimeout(dismissTimer);
       dismissTimer = setTimeout(() => {
+        document.getElementById('toastCard').style.display = 'none';
         sendAction('close-toast', {});
       }, delay);
     }
 
-    window.showToast = function(title, body, icon, tag) {
-      currentTitle = title || 'WhatsApp';
+    window.showToast = function(title, body, icon, tag, media, isCall) {
+      currentToastType = 'chat';
+      currentTitle = (title || 'WhatsApp').trim();
       currentTag = tag || '';
+      currentFilePath = '';
+
+      // Strip unread badge count from title if present (e.g. "1 pesan yang belum dibacaTRI PENS" -> "TRI PENS")
+      currentTitle = currentTitle.replace(/^\d+\s*(pesan yang belum dibaca|pesan belum dibaca|unread messages?|unread)\s*/i, '').trim();
+
+      // If title is generic "WhatsApp", extract real sender name from body if present ("Sender: Message")
+      let cleanBody = (body || '').trim();
+      if (!currentTitle || currentTitle.toLowerCase() === 'whatsapp') {
+        if (cleanBody && cleanBody.includes(':')) {
+          const sepIdx = cleanBody.indexOf(':');
+          const potentialSender = cleanBody.slice(0, sepIdx).trim();
+          if (potentialSender.length > 0 && potentialSender.length < 50) {
+            currentTitle = potentialSender.replace(/^\d+\s*(pesan yang belum dibaca|pesan belum dibaca|unread messages?|unread)\s*/i, '').trim();
+            cleanBody = cleanBody.slice(sepIdx + 1).trim();
+          }
+        }
+      }
+
+      const card = document.getElementById('toastCard');
+      card.style.display = 'flex';
+
+      const isCallNotification = isCall === true || isCall === 'true';
+      if (isCallNotification) {
+        currentToastType = 'call';
+        document.getElementById('brandText').textContent = 'WaLite • Panggilan Masuk';
+      } else {
+        document.getElementById('brandText').textContent = 'WaLite';
+      }
 
       document.getElementById('senderTitle').textContent = currentTitle;
-      document.getElementById('msgBody').textContent = body || '';
+      document.getElementById('msgBody').textContent = cleanBody || '';
+      document.getElementById('msgBody').removeAttribute('title');
 
       const img = document.getElementById('avatarImg');
       const fallback = document.getElementById('avatarFallback');
@@ -292,41 +464,142 @@
           img.style.display = 'none';
           fallback.textContent = (currentTitle[0] || 'W').toUpperCase();
           fallback.style.display = 'flex';
+          fallback.style.background = '#00a884';
         };
       } else {
         img.style.display = 'none';
         fallback.textContent = (currentTitle[0] || 'W').toUpperCase();
         fallback.style.display = 'flex';
+        fallback.style.background = '#00a884';
       }
 
-      const isRealChat = Boolean(currentTitle && currentTitle !== 'WhatsApp');
+      // Sticker / GIF / Media Preview
+      const mediaWrapper = document.getElementById('mediaPreviewWrapper');
+      const mediaImg = document.getElementById('mediaPreviewImg');
+      mediaWrapper.style.display = 'none';
+      if (!isCallNotification && media && (media.startsWith('http') || media.startsWith('data:') || media.startsWith('blob:'))) {
+        mediaImg.onload = () => { mediaWrapper.style.display = 'flex'; };
+        mediaImg.onerror = () => { mediaWrapper.style.display = 'none'; };
+        mediaImg.src = media;
+      } else {
+        mediaWrapper.style.display = 'none';
+        mediaImg.src = '';
+      }
 
       const replyContainer = document.getElementById('replyContainer');
+      const downloadContainer = document.getElementById('downloadContainer');
+      const callContainer = document.getElementById('callContainer');
       const replyInput = document.getElementById('replyInput');
       const statusSent = document.getElementById('statusSent');
 
+      downloadContainer.style.display = 'none';
       statusSent.style.display = 'none';
       replyInput.value = '';
 
-      if (isRealChat) {
-        replyContainer.style.display = 'flex';
-        replyInput.placeholder = 'Balas ke ' + currentTitle + '...';
-      } else {
+      if (isCallNotification) {
         replyContainer.style.display = 'none';
+        callContainer.style.display = 'flex';
+        resetTimer(40000);
+      } else {
+        callContainer.style.display = 'none';
+        replyContainer.style.display = 'flex';
+        if (currentTitle && currentTitle.toLowerCase() !== 'whatsapp') {
+          replyInput.placeholder = 'Balas ke ' + currentTitle + '...';
+        } else {
+          replyInput.placeholder = 'Balas cepat...';
+        }
+        resetTimer(9000);
       }
+    };
 
-      resetTimer(8000);
+    window.showDownloadToast = function(fileName, filePath) {
+      currentToastType = 'download';
+      currentFilePath = filePath || '';
+      currentTitle = fileName || 'Berkas Unduhan';
+      currentTag = '';
+
+      const card = document.getElementById('toastCard');
+      card.style.display = 'flex';
+
+      document.getElementById('brandText').textContent = 'WaLite • Unduhan';
+      document.getElementById('senderTitle').textContent = 'Unduhan Selesai';
+      document.getElementById('msgBody').textContent = fileName || 'Berkas telah disimpan';
+      document.getElementById('msgBody').title = filePath || '';
+
+      const img = document.getElementById('avatarImg');
+      const fallback = document.getElementById('avatarFallback');
+      img.style.display = 'none';
+
+      const mediaWrapper = document.getElementById('mediaPreviewWrapper');
+      if (mediaWrapper) mediaWrapper.style.display = 'none';
+
+      const ext = (fileName && fileName.includes('.') ? fileName.split('.').pop() : 'FILE').slice(0, 4).toUpperCase();
+      fallback.textContent = ext;
+      fallback.style.display = 'flex';
+      fallback.style.background = '#00a884';
+
+      document.getElementById('replyContainer').style.display = 'none';
+      document.getElementById('callContainer').style.display = 'none';
+      document.getElementById('statusSent').style.display = 'none';
+      document.getElementById('downloadContainer').style.display = 'flex';
+
+      resetTimer(10000);
     };
 
     document.getElementById('btnClose').addEventListener('click', (e) => {
       e.stopPropagation();
       if (dismissTimer) clearTimeout(dismissTimer);
+      document.getElementById('toastCard').style.display = 'none';
       sendAction('close-toast', {});
+    });
+
+    document.getElementById('btnOpenFile').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dismissTimer) clearTimeout(dismissTimer);
+      document.getElementById('toastCard').style.display = 'none';
+      sendAction('open-file', { path: currentFilePath });
+    });
+
+    document.getElementById('btnOpenFolder').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dismissTimer) clearTimeout(dismissTimer);
+      document.getElementById('toastCard').style.display = 'none';
+      sendAction('open-folder', { path: currentFilePath });
+    });
+
+    document.getElementById('btnAcceptCall').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dismissTimer) clearTimeout(dismissTimer);
+      document.getElementById('toastCard').style.display = 'none';
+      sendAction('accept-call', {});
+    });
+
+    document.getElementById('btnDeclineCall').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dismissTimer) clearTimeout(dismissTimer);
+      document.getElementById('toastCard').style.display = 'none';
+      sendAction('decline-call', {});
     });
 
     document.getElementById('contentArea').addEventListener('click', () => {
       if (dismissTimer) clearTimeout(dismissTimer);
-      sendAction('open-chat', { title: currentTitle, tag: currentTag });
+      document.getElementById('toastCard').style.display = 'none';
+      if (currentToastType === 'download') {
+        sendAction('open-file', { path: currentFilePath });
+      } else if (currentToastType === 'call') {
+        sendAction('accept-call', {});
+      } else {
+        sendAction('open-chat', { title: currentTitle, tag: currentTag });
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (dismissTimer) clearTimeout(dismissTimer);
+        document.getElementById('toastCard').style.display = 'none';
+        sendAction('close-toast', {});
+      }
     });
 
     function doSendReply() {
@@ -347,8 +620,9 @@
       });
 
       setTimeout(() => {
-        sendAction('close-toast', {});
-      }, 700);
+        const card = document.getElementById('toastCard');
+        if (card) card.style.display = 'none';
+      }, 500);
     }
 
     document.getElementById('btnSend').addEventListener('click', (e) => {
@@ -368,6 +642,10 @@
       if (dismissTimer) clearTimeout(dismissTimer);
     });
 
+    replyInput.addEventListener('input', () => {
+      if (dismissTimer) clearTimeout(dismissTimer);
+    });
+
     replyInput.addEventListener('blur', () => {
       if (!replyInput.value) {
         resetTimer(4000);
@@ -379,7 +657,9 @@
     });
 
     document.getElementById('toastCard').addEventListener('mouseleave', () => {
-      if (document.activeElement !== replyInput) {
+      if (currentToastType === 'download') {
+        resetTimer(5000);
+      } else if (document.activeElement !== replyInput) {
         resetTimer(4000);
       }
     });

@@ -13,6 +13,8 @@
   // 4. WhatsApp hands video blobs to <img> tags which causes memory leaks; reject video URLs on <img>.
   (function initWebKitBlobMediaPatch() {
     try {
+      var isLinux = typeof navigator !== 'undefined' && (/Linux|X11/i.test(navigator.userAgent) || /Linux/i.test(navigator.platform || ''));
+      if (!isLinux) return;
       var MP = HTMLMediaElement.prototype;
       var src = Object.getOwnPropertyDescriptor(MP, "src");
       var pre = Object.getOwnPropertyDescriptor(MP, "preload");
@@ -175,330 +177,58 @@
   const WALITE_ICON = 'data:image/png;base64,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';
   const TEAL = '#00a884';
 
-  function formatBytes(bytes) {
-    if (!bytes || bytes <= 0) return '';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
-
-  function createFileIconBadge(filename) {
-    const ext = (filename.includes('.') ? filename.split('.').pop() : 'FILE').slice(0, 4).toUpperCase();
-    const div = document.createElement('div');
-    div.style.cssText = 'width:42px;height:44px;background:rgba(0,168,132,0.14);border:1px solid rgba(0,168,132,0.3);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;';
-
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    icon.setAttribute('viewBox', '0 0 24 24');
-    icon.style.cssText = 'width:18px;height:18px;fill:none;stroke:#00a884;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;';
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
-    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    polyline.setAttribute('points', '14 2 14 8 20 8');
-    icon.append(path, polyline);
-
-    const badge = document.createElement('span');
-    badge.textContent = ext;
-    badge.style.cssText = 'font-size:9px;font-weight:700;color:#00a884;letter-spacing:0.5px;margin-top:2px;line-height:1;';
-
-    div.append(icon, badge);
-    return div;
-  }
-
-  function createSaveSvg() {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.style.cssText = 'width:16px;height:16px;fill:none;stroke:#111b21;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;';
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    poly.setAttribute('points', '7 10 12 15 17 10');
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', '12'); line.setAttribute('y1', '15');
-    line.setAttribute('x2', '12'); line.setAttribute('y2', '3');
-    svg.append(path, poly, line);
-    return svg;
-  }
-
-  function createOpenSvg() {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.style.cssText = 'width:15px;height:15px;fill:none;stroke:#e9edef;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;';
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6');
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    poly.setAttribute('points', '15 3 21 3 21 9');
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', '10'); line.setAttribute('y1', '14');
-    line.setAttribute('x2', '21'); line.setAttribute('y2', '3');
-    svg.append(path, poly, line);
-    return svg;
-  }
-
-  let activeDialog = null;
-
-  function closeDialog() {
-    if (activeDialog && activeDialog.parentNode) {
-      activeDialog.parentNode.removeChild(activeDialog);
-    }
-    activeDialog = null;
-  }
-
-  async function saveWithPicker(blob, filename, statusEl, btnSave) {
-    if ('showSaveFilePicker' in window) {
-      try {
-        const ext = filename.includes('.') ? filename.split('.').pop() : '';
-        const opts = { suggestedName: filename };
-        if (ext) {
-          opts.types = [{
-            description: ext.toUpperCase() + ' File',
-            accept: { [blob.type || 'application/octet-stream']: ['.' + ext] }
-          }];
-        }
-        btnSave.disabled = true;
-        statusEl.textContent = 'Menunggu pemilihan folder...';
-        const handle = await window.showSaveFilePicker(opts);
-        statusEl.textContent = 'Menyimpan berkas ke disk...';
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        statusEl.style.color = TEAL;
-        statusEl.textContent = '✓ Berkas berhasil disimpan!';
-        setTimeout(closeDialog, 1000);
-        return true;
-      } catch (e) {
-        btnSave.disabled = false;
-        if (e.name === 'AbortError') {
-          statusEl.style.color = '#8696a0';
-          statusEl.textContent = 'Penyimpanan dibatalkan.';
-          return false;
-        }
-        console.warn('[WaLite] SaveAs fallback:', e);
-        statusEl.textContent = 'Mencoba cara penyimpanan alternatif...';
-      }
-    }
-
-    // Fallback: standard anchor download
-    try {
-      const u = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = u;
-      a.download = filename;
-      document.body.appendChild(a);
-      originalClick.call(a);
-      setTimeout(() => {
-        if (a.parentNode) a.parentNode.removeChild(a);
-        URL.revokeObjectURL(u);
-      }, 3000);
-      statusEl.style.color = TEAL;
-      statusEl.textContent = '✓ Unduhan dikirim ke browser!';
-      setTimeout(closeDialog, 1000);
-      return true;
-    } catch (err) {
-      statusEl.style.color = '#f15c6d';
-      statusEl.textContent = 'Gagal menyimpan berkas.';
-      btnSave.disabled = false;
-      return false;
-    }
-  }
-
-  function showDownloadModal(blob, filename, url) {
-    closeDialog();
-
-    const overlay = document.createElement('div');
-    overlay.className = 'wl-modal-overlay';
-    activeDialog = overlay;
-
-    const card = document.createElement('div');
-    card.className = 'wl-modal-card';
-    card.style.cssText =
-      'width:360px;max-width:92vw;padding:20px 22px 18px;background:rgba(24,34,41,0.96);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 24px 48px -12px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);font-family:Segoe UI,system-ui,-apple-system,sans-serif;';
-
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
-
-    const titleBox = document.createElement('div');
-    titleBox.style.cssText = 'display:flex;align-items:center;gap:8px;';
-
-    const titleIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    titleIcon.setAttribute('viewBox', '0 0 24 24');
-    titleIcon.style.cssText = 'width:16px;height:16px;fill:none;stroke:#00a884;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;';
-    const tPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    tPath.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
-    const tPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    tPoly.setAttribute('points', '7 10 12 15 17 10');
-    const tLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    tLine.setAttribute('x1', '12'); tLine.setAttribute('y1', '15');
-    tLine.setAttribute('x2', '12'); tLine.setAttribute('y2', '3');
-    titleIcon.append(tPath, tPoly, tLine);
-
-    const title = document.createElement('div');
-    title.style.cssText = 'font-size:14px;font-weight:600;color:#e9edef;letter-spacing:0.2px;';
-    title.textContent = 'Unduh Berkas';
-    titleBox.append(titleIcon, title);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'wl-panel-btn-icon';
-    closeBtn.textContent = '×';
-    closeBtn.style.cssText = 'background:none;border:none;font-size:18px;color:#8696a0;cursor:pointer;line-height:1;padding:2px 8px;border-radius:6px;transition:background .15s,color .15s;';
-    closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(255,255,255,0.08)'; closeBtn.style.color = '#e9edef'; };
-    closeBtn.onmouseleave = () => { closeBtn.style.background = 'none'; closeBtn.style.color = '#8696a0'; };
-    closeBtn.addEventListener('click', closeDialog);
-
-    hdr.append(titleBox, closeBtn);
-    card.appendChild(hdr);
-
-    const fileBox = document.createElement('div');
-    fileBox.style.cssText = 'background:rgba(17,27,33,0.7);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,0.06);';
-
-    const iconEl = createFileIconBadge(filename);
-
-    const infoEl = document.createElement('div');
-    infoEl.style.cssText = 'overflow:hidden;display:flex;flex-direction:column;gap:3px;flex:1;';
-
-    const nameEl = document.createElement('div');
-    nameEl.style.cssText = 'color:#e9edef;font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-    nameEl.textContent = filename;
-    nameEl.title = filename;
-
-    const sizeEl = document.createElement('div');
-    sizeEl.style.cssText = 'color:#8696a0;font-size:11px;';
-    sizeEl.textContent = blob && blob.size ? formatBytes(blob.size) : 'Ukuran berkas';
-
-    infoEl.append(nameEl, sizeEl);
-    fileBox.append(iconEl, infoEl);
-    card.appendChild(fileBox);
-
-    const statusEl = document.createElement('div');
-    statusEl.style.cssText = 'font-size:12px;min-height:18px;margin-bottom:12px;color:#8696a0;';
-    statusEl.textContent = 'Pilih tindakan untuk berkas ini:';
-    card.appendChild(statusEl);
-
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
-
-    const btnSave = document.createElement('button');
-    btnSave.style.cssText = 'background:linear-gradient(180deg,#00b890 0%,#009e7c 100%);color:#111b21;border:none;border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;box-shadow:0 2px 8px rgba(0,168,132,0.35);';
-    btnSave.append(createSaveSvg(), document.createTextNode('Simpan Sebagai...'));
-    btnSave.onmouseenter = () => { btnSave.style.transform = 'translateY(-1px)'; btnSave.style.boxShadow = '0 4px 12px rgba(0,168,132,0.45)'; };
-    btnSave.onmouseleave = () => { btnSave.style.transform = 'none'; btnSave.style.boxShadow = '0 2px 8px rgba(0,168,132,0.35)'; };
-    btnSave.addEventListener('click', () => {
-      saveWithPicker(blob, filename, statusEl, btnSave);
-    });
-    actions.appendChild(btnSave);
-
-    const btnOpen = document.createElement('button');
-    btnOpen.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#e9edef;border-radius:8px;padding:9px 16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s;';
-    btnOpen.append(createOpenSvg(), document.createTextNode('Buka Langsung'));
-    btnOpen.onmouseenter = () => { btnOpen.style.background = 'rgba(255,255,255,0.1)'; btnOpen.style.borderColor = 'rgba(255,255,255,0.2)'; };
-    btnOpen.onmouseleave = () => { btnOpen.style.background = 'rgba(255,255,255,0.06)'; btnOpen.style.borderColor = 'rgba(255,255,255,0.12)'; };
-    btnOpen.addEventListener('click', () => {
-      try {
-        const openUrl = url || URL.createObjectURL(blob);
-        window.open(openUrl, '_blank');
-        statusEl.textContent = 'Membuka berkas...';
-        setTimeout(closeDialog, 600);
-      } catch (err) {
-        console.error(err);
-      }
-    });
-    actions.appendChild(btnOpen);
-
-    const btnCancel = document.createElement('button');
-    btnCancel.className = 'wl-link-about';
-    btnCancel.style.cssText = 'background:none;border:none;color:#8696a0;font-size:12px;font-weight:500;cursor:pointer;margin-top:4px;align-self:center;padding:4px 10px;border-radius:4px;transition:color .15s;';
-    btnCancel.textContent = 'Batal';
-    btnCancel.onmouseenter = () => { btnCancel.style.color = '#e9edef'; };
-    btnCancel.onmouseleave = () => { btnCancel.style.color = '#8696a0'; };
-    btnCancel.addEventListener('click', closeDialog);
-    actions.appendChild(btnCancel);
-
-    card.appendChild(actions);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-  }
-
-  async function handleDownloadIntercept(url, rawFilename) {
-    let filename = rawFilename || 'file';
-    if (!filename.includes('.')) {
-      const urlExt = url.split('.').pop().split('?')[0];
-      if (urlExt && urlExt.length <= 4) filename += '.' + urlExt;
-    }
-
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      showDownloadModal(blob, filename, url);
-    } catch (e) {
-      showDownloadModal(null, filename, url);
-    }
-  }
-
-  // Intercept anchor clicks ONLY when an explicit download is requested
-  const originalClick = HTMLAnchorElement.prototype.click;
-  HTMLAnchorElement.prototype.click = function () {
-    const downloadAttr = this.getAttribute('download');
-    const downloadProp = this.download;
-    const hasDownload = downloadAttr !== null || (typeof downloadProp === 'string' && downloadProp.length > 0);
-    if (hasDownload) {
-      const href = this.href || this.getAttribute('href') || '';
-      const filename = downloadAttr || downloadProp || 'download';
-      if (href) {
-        handleDownloadIntercept(href, filename);
-        return;
-      }
-    }
-    return originalClick.apply(this, arguments);
-  };
-
-  // Intercept DOM clicks on downloads and external links
-  document.addEventListener('click', function (e) {
-    const a = e.target && e.target.closest ? e.target.closest('a') : null;
-    if (a) {
-      const href = a.href || a.getAttribute('href') || '';
-      const downloadAttr = a.getAttribute('download');
-      const downloadProp = a.download;
-      const hasDownload = downloadAttr !== null || (typeof downloadProp === 'string' && downloadProp.length > 0);
-      if (hasDownload) {
-        if (href) {
-          e.preventDefault();
-          e.stopPropagation();
-          handleDownloadIntercept(href, downloadAttr || downloadProp || 'download');
-          return;
-        }
-      }
-
-      // External link check: open in default browser (exclude WhatsApp internal services like Flows & PDF viewer)
-      if (href && (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('tel:'))) {
-        try {
-          const u = new URL(href, window.location.href);
-          const isInternal =
-            u.hostname === 'web.whatsapp.com' ||
-            u.hostname.endsWith('.whatsapp.com') ||
-            u.hostname.endsWith('.whatsapp.net') ||
-            u.hostname.endsWith('.fbcdn.net');
-          if (!isInternal) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.open(u.href, '_blank');
-          }
-        } catch (_) {}
-      }
-    }
-  }, true);
+  // External links are handled cleanly by Tauri on_navigation / on_new_window in Rust.
 
   // Walite Navigation & Quick-Reply Bridge
+  // 1. Permanently suppress beforeunload prompts on WhatsApp Web
+  try {
+    window.addEventListener('beforeunload', function (e) {
+      e.stopImmediatePropagation();
+      delete e.returnValue;
+    }, true);
+    window.onbeforeunload = null;
+    Object.defineProperty(window, 'onbeforeunload', {
+      get: () => null,
+      set: () => {},
+      configurable: true
+    });
+  } catch (_) {}
+
+  function normalizeTitle(s) {
+    if (!s) return '';
+    return s
+      .replace(/[\p{Emoji}\p{Extended_Pictographic}\u200d\uFE0F]/gu, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
   function simulateClick(el) {
     if (!el) return;
-    const opts = { bubbles: true, cancelable: true, view: window };
-    el.dispatchEvent(new MouseEvent('mousedown', opts));
-    el.dispatchEvent(new MouseEvent('mouseup', opts));
-    el.click();
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      detail: 1,
+      button: 0,
+      buttons: 1,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true
+    };
+    try { el.dispatchEvent(new PointerEvent('pointerdown', opts)); } catch (_) {}
+    try { el.dispatchEvent(new MouseEvent('mousedown', opts)); } catch (_) {}
+    try { el.focus(); } catch (_) {}
+    try { el.dispatchEvent(new PointerEvent('pointerup', opts)); } catch (_) {}
+    try { el.dispatchEvent(new MouseEvent('mouseup', opts)); } catch (_) {}
+    try { el.dispatchEvent(new MouseEvent('click', opts)); } catch (_) {}
+    try { el.click(); } catch (_) {}
   }
 
   window.triggerWaliteTestNotification = function () {
     const testTitle = 'Budi Santoso';
-    const testBody = 'Halo! Ini pesan tes notifikasi dan fitur Balas Cepat WaLite.';
+    const testBody = 'Halo! Ketik teks balasan di kolom bawah lalu klik Kirim.';
     const testIcon = WALITE_ICON;
     const testTag = 'test-msg';
 
@@ -508,16 +238,6 @@
       icon: testIcon,
       tag: testTag
     });
-
-    try {
-      if ('Notification' in window) {
-        new window.Notification(testTitle, {
-          body: testBody,
-          icon: testIcon,
-          tag: testTag
-        });
-      }
-    } catch (_) {}
   };
 
   function dispatchWaliteAction(action, params) {
@@ -528,56 +248,139 @@
     } catch (e) {
       console.warn('[WaLite] Action dispatch error:', e);
     }
+  }
+  window.dispatchWaliteAction = dispatchWaliteAction;
+
+  window.__walite_accept_call = function () {
     try {
-      if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
-        window.__TAURI_INTERNALS__.invoke('walite_action', {
-          action: action,
-          title: params.title || null,
-          body: params.body || null,
-          icon: params.icon || null,
-          tag: params.tag || null,
-          text: params.text || null
-        }).catch(function () {});
+      const acceptBtn = document.querySelector(
+        'button[aria-label*="Jawab" i], button[aria-label*="Terima" i], button[aria-label*="Accept" i], button[aria-label*="Answer" i], [data-testid*="call-accept"], [data-testid*="call-answer"], button:has(span[data-icon="call-accept"]), button:has(span[data-icon="call"])'
+      );
+      if (acceptBtn) {
+        simulateClick(acceptBtn);
+        return true;
+      }
+      if (typeof window.require === 'function') {
+        const callAction = window.require('WAWebCallAction') || window.require('WAWebVoip');
+        if (callAction && typeof callAction.acceptCall === 'function') {
+          callAction.acceptCall();
+          return true;
+        }
       }
     } catch (_) {}
-  }
+    return false;
+  };
+
+  window.__walite_decline_call = function () {
+    try {
+      const declineBtn = document.querySelector(
+        'button[aria-label*="Tolak" i], button[aria-label*="Decline" i], button[aria-label*="Reject" i], button[aria-label*="Dismiss" i], [data-testid*="call-decline"], [data-testid*="call-reject"], button:has(span[data-icon="call-decline"]), button:has(span[data-icon="end-call"])'
+      );
+      if (declineBtn) {
+        simulateClick(declineBtn);
+        return true;
+      }
+      if (typeof window.require === 'function') {
+        const callAction = window.require('WAWebCallAction') || window.require('WAWebVoip');
+        if (callAction && typeof callAction.rejectCall === 'function') {
+          callAction.rejectCall();
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
+  };
+
+  const activeNotificationMap = new Map();
+
+  window.__walite_on_notif_click = function (title, tag) {
+    const cleanTitle = (title || '').trim();
+    const cleanTag = (tag || '').trim();
+    const norm = normalizeTitle(cleanTitle);
+
+    // 1. WhatsApp Web's own onclick callback (the true native React handler!)
+    let instance = null;
+    if (cleanTag && activeNotificationMap.has(cleanTag)) {
+      instance = activeNotificationMap.get(cleanTag);
+    } else if (norm && activeNotificationMap.has(norm)) {
+      instance = activeNotificationMap.get(norm);
+    }
+    if (instance && typeof instance.onclick === 'function') {
+      try {
+        instance.onclick({ currentTarget: instance, target: instance, type: 'click' });
+        return true;
+      } catch (err) {
+        console.warn('[WaLite] notif onclick error, fallback to open_chat:', err);
+      }
+    }
+
+    // 2. Direct DOM search and click
+    return window.__walite_open_chat(cleanTitle, cleanTag);
+  };
 
   if (!window.__walite_open_chat) {
     window.__walite_open_chat = function (title, jid) {
       if (!title || title === 'WhatsApp') return false;
       const cleanTitle = title.trim();
+      const normTarget = normalizeTitle(cleanTitle);
 
-      // 1. If currently inside the target chat, return true
-      const mainHeader = document.querySelector('#main header');
-      if (mainHeader && (
-        mainHeader.textContent.toLowerCase().includes(cleanTitle.toLowerCase()) ||
-        (jid && mainHeader.innerHTML.includes(jid.split('@')[0]))
-      )) {
-        return true;
+      // If Settings or Profile drawer is currently open, click back button first
+      const backBtn = document.querySelector('header button[aria-label*="Back" i], header button[aria-label*="Kembali" i], span[data-icon="back"], span[data-icon="arrow-left"]')?.closest('button');
+      if (backBtn) {
+        try { backBtn.click(); } catch (_) {}
       }
 
-      // 2. Search visible rows in pane-side
-      const rows = document.querySelectorAll('#pane-side [role="row"], #pane-side [role="listitem"], #pane-side div[tabindex]');
-      for (const r of rows) {
-        const text = r.textContent || '';
-        if (text.toLowerCase().includes(cleanTitle.toLowerCase())) {
-          simulateClick(r);
+      // Check if already in this exact chat
+      const mainHeader = document.querySelector('#main header');
+      if (mainHeader) {
+        const headerTitleEl = mainHeader.querySelector('span[title], [data-testid="cell-frame-title"], [dir="auto"]');
+        const headerText = headerTitleEl ? (headerTitleEl.getAttribute('title') || headerTitleEl.textContent || '') : '';
+        const normHeader = normalizeTitle(headerText);
+        if (normHeader && normTarget && normHeader === normTarget) {
+          const input = document.querySelector('#main footer [contenteditable="true"]');
+          if (input) input.focus();
           return true;
         }
       }
 
-      // 3. Search by title attribute
-      const escaped = CSS.escape(cleanTitle);
-      const span = document.querySelector(`#pane-side span[title="${escaped}"]`);
-      if (span) {
-        const r = span.closest('[role="row"]') || span.closest('div[tabindex]') || span;
-        simulateClick(r);
-        return true;
+      // 1. Search visible rows in pane-side
+      const rows = document.querySelectorAll('#pane-side [role="row"], #pane-side [role="listitem"]');
+      for (const r of rows) {
+        const titleEl = r.querySelector('[data-testid="cell-frame-title"], span[title], ._ak8q, [dir="auto"]');
+        const rowTitle = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent || '').trim() : '';
+        const normRow = normalizeTitle(rowTitle);
+        if (normRow && normTarget && (normRow === normTarget || normRow.includes(normTarget) || normTarget.includes(normRow))) {
+          const target = r.querySelector('div[role="gridcell"]') || r.querySelector('div[tabindex]') || titleEl || r;
+          simulateClick(target);
+          simulateClick(r);
+          setTimeout(() => {
+            const input = document.querySelector('#main footer [contenteditable="true"]');
+            if (input) input.focus();
+          }, 250);
+          return true;
+        }
       }
 
-      // 4. Fallback: Search box in sidebar
+      // 2. Search by title attribute
+      try {
+        const escaped = CSS.escape(cleanTitle);
+        const span = document.querySelector(`#pane-side span[title*="${escaped}" i]`);
+        if (span) {
+          const r = span.closest('[role="row"]') || span.closest('div[tabindex]') || span;
+          const target = r.querySelector('div[role="gridcell"]') || span;
+          simulateClick(target);
+          simulateClick(r);
+          setTimeout(() => {
+            const input = document.querySelector('#main footer [contenteditable="true"]');
+            if (input) input.focus();
+          }, 250);
+          return true;
+        }
+      } catch (_) {}
+
+      // 3. Fallback: Search box in sidebar
       const searchBox = document.querySelector(
-        '#side div[contenteditable="true"], div[data-tab="3"], [data-testid*="search-input"], [aria-label*="Cari"], [aria-label*="Search"]'
+        '#side div[contenteditable="true"], div[data-tab="3"], [data-testid*="search-input"], [aria-label*="Cari" i], [aria-label*="Search" i]'
       );
       if (searchBox) {
         searchBox.focus();
@@ -586,201 +389,403 @@
         searchBox.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: cleanTitle }));
         setTimeout(() => {
           const firstRow = document.querySelector('#pane-side [role="row"], #pane-side [role="listitem"]');
-          if (firstRow) simulateClick(firstRow);
+          if (firstRow) {
+            const target = firstRow.querySelector('div[role="gridcell"]') || firstRow.querySelector('span[title]') || firstRow;
+            simulateClick(target);
+            simulateClick(firstRow);
+          }
+          setTimeout(() => {
+            const clearBtn = document.querySelector('#side button[aria-label*="Batal" i], #side button[aria-label*="Cancel" i], #side span[data-icon="x-alt"], #side span[data-icon="x"]')?.closest('button');
+            if (clearBtn) clearBtn.click();
+            const input = document.querySelector('#main footer [contenteditable="true"]');
+            if (input) input.focus();
+          }, 350);
         }, 350);
         return true;
       }
+
+      // 4. JID / Phone fallback
+      if (jid && jid.includes('@c.us')) {
+        const phone = jid.split('@')[0].replace(/[^0-9]/g, '');
+        if (phone.length >= 7) {
+          const a = document.createElement('a');
+          a.href = `https://web.whatsapp.com/send?phone=${phone}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          return true;
+        }
+      }
+
+      if (jid === 'test-notif' || jid === 'test-msg') {
+        const input = document.querySelector('#main footer [contenteditable="true"]');
+        if (input) input.focus();
+        return true;
+      }
+
       return false;
     };
   }
 
-  if (!window.__walite_send_reply) {
-    window.__walite_send_reply = function (title, tag, text) {
-      if (!text || !text.trim()) return;
-      if (window.__walite_open_chat) {
-        window.__walite_open_chat(title, tag);
-      }
-      let attempts = 0;
-      function trySend() {
-        attempts++;
-        const footer = document.querySelector('#main footer');
-        if (!footer) {
-          if (attempts < 25) setTimeout(trySend, 120);
-          return;
-        }
-        const box = footer.querySelector('[contenteditable="true"], div[role="textbox"]');
-        if (!box) {
-          if (attempts < 25) setTimeout(trySend, 120);
-          return;
-        }
-        box.focus();
-        document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, text);
-        box.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: text }));
+  let isSendingInlineReply = false;
+  window.__walite_send_inline_reply = function (title, tag, text) {
+    if (!text || !text.trim() || isSendingInlineReply) return;
+    isSendingInlineReply = true;
+    setTimeout(() => { isSendingInlineReply = false; }, 3000);
 
-        setTimeout(() => {
-          const sendBtn = footer.querySelector('button[aria-label*="Kirim"], button[aria-label*="Send"], [data-testid="send"]') ||
-                          footer.querySelector('span[data-icon="send"]')?.closest('button');
-          if (sendBtn) {
-            simulateClick(sendBtn);
-          } else {
-            box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
-          }
-        }, 180);
+    // 1. Open the target contact chat
+    window.__walite_on_notif_click(title, tag);
+
+    // 2. Wait for the chat box, insert text, and click send exactly once
+    let attempts = 0;
+    function tryTypeAndSend() {
+      attempts++;
+      const footer = document.querySelector('#main footer');
+      const box = footer ? footer.querySelector('[contenteditable="true"], div[role="textbox"]') : null;
+
+      if (!box) {
+        if (attempts < 25) setTimeout(tryTypeAndSend, 120);
+        else isSendingInlineReply = false;
+        return;
       }
-      setTimeout(trySend, 250);
-    };
+
+      box.focus();
+      document.execCommand('selectAll', false, null);
+      document.execCommand('insertText', false, text.trim());
+      box.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: text.trim() }));
+
+      setTimeout(() => {
+        const sendBtn = footer.querySelector(
+          'button[data-testid="send"], button[aria-label*="Send" i], button[aria-label*="Kirim" i], span[data-icon="send"], span[data-icon="wds-ic-send-filled"]'
+        )?.closest('button') || footer.querySelector('span[data-icon="send"]')?.closest('div[role="button"]');
+
+        if (sendBtn && !sendBtn.disabled) {
+          sendBtn.click();
+        }
+        setTimeout(() => { isSendingInlineReply = false; }, 400);
+      }, 200);
+    }
+
+    setTimeout(tryTypeAndSend, 250);
+  };
+
+  // Notification & Incoming Message Engine
+  let NativeBrowserNotification = (typeof window !== 'undefined' && window.Notification) ? window.Notification : null;
+  const notifiedMessageSet = new Set();
+  let isInitialSeeded = false;
+  let lastChatSnippetMap = new Map();
+  let lastReportedBadgeCount = -1;
+
+  function getCleanSenderTitleText(rawTitle) {
+    let title = (rawTitle || '').trim();
+    title = title.replace(/^\d+\s*(pesan yang belum dibaca|pesan belum dibaca|unread messages?|unread)\s*/i, '');
+    title = title.replace(/\s*\d+\s*(pesan yang belum dibaca|pesan belum dibaca|unread messages?|unread)$/i, '');
+    return title.trim();
   }
 
-  // Brand Notifications as WaLite and set Logo Icon & Quick-Reply Toast
-  if ('Notification' in window) {
-    const OriginalNotification = window.Notification;
-    const isWindows = typeof navigator !== 'undefined' && (/Win/i.test(navigator.platform || '') || /Windows/i.test(navigator.userAgent || ''));
-    const isLinux = typeof navigator !== 'undefined' && (/Linux|X11/i.test(navigator.userAgent) || /Linux/i.test(navigator.platform || ''));
-
-    window.Notification = function (title, options) {
-      options = options || {};
-      const rawTitle = (title || 'WhatsApp').trim();
-      const rawBody = (options.body || '').trim();
-      const rawTag = (options.tag || '').trim();
-      const rawIcon = (options.icon || '').trim();
-
-      // On Windows, dispatch to WaLite Quick-Reply Toast window
-      if (isWindows) {
-        dispatchWaliteAction('notify', {
-          title: rawTitle,
-          body: rawBody,
-          icon: rawIcon,
-          tag: rawTag
-        });
-
-        const dummyNotif = {
-          title: rawTitle,
-          body: rawBody,
-          tag: rawTag,
-          icon: rawIcon,
-          onclick: null,
-          onclose: null,
-          onerror: null,
-          close: function () {
-            dispatchWaliteAction('close-toast', {});
-          },
-          addEventListener: function (type, listener) {
-            if (type === 'click') this.onclick = listener;
-            if (type === 'close') this.onclose = listener;
-          },
-          removeEventListener: function () {}
-        };
-        window.__active_walite_notification = dummyNotif;
-        return dummyNotif;
-      }
-
-      const appTitle = rawTitle ? ('WaLite • ' + rawTitle) : 'WaLite';
-      if (!isLinux) {
-        if (!options.icon || options.icon.includes('whatsapp') || options.icon.includes('blob:')) {
-          options.icon = WALITE_ICON;
-        }
-        options.badge = WALITE_ICON;
-      } else {
-        if (options.icon && (options.icon.startsWith('data:') || options.icon.startsWith('blob:'))) {
-          delete options.icon;
-        }
-        delete options.badge;
-      }
+  async function resolveMediaAsDataUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('data:') || url.startsWith('http')) return url;
+    if (url.startsWith('blob:')) {
       try {
-        return new OriginalNotification(appTitle, options);
-      } catch (err) {
-        console.warn('[WaLite] Notification dispatch error:', err);
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result || '');
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+      } catch (_) {
+        return '';
       }
-    };
-    Object.assign(window.Notification, OriginalNotification);
-    window.Notification.prototype = OriginalNotification.prototype;
+    }
+    return '';
+  }
 
+  const IGNORED_MESSAGES_REGEX = /^(pesan\s+(terkirim|telah\s+dibaca|dibaca)|sent|delivered|read|typing|mengetik|centang)/i;
+
+  function isIgnoredSystemMessage(body) {
+    if (!body) return true;
+    const b = body.trim().toLowerCase();
+    return (
+      IGNORED_MESSAGES_REGEX.test(b) ||
+      b === 'pesan telah dibaca' ||
+      b === 'pesan dibaca' ||
+      b === 'dibaca' ||
+      b === 'read' ||
+      b === 'message read' ||
+      b === 'pesan terkirim' ||
+      b === 'terkirim' ||
+      b === 'sent' ||
+      b === 'delivered'
+    );
+  }
+
+  function dispatchNotification(title, body, icon, tag, media) {
+    let cleanTitle = getCleanSenderTitleText(title);
+    let cleanBody = (body || '').trim();
+    let cleanTag = (tag || cleanTitle).trim();
+
+    // Filter out read receipts, sent confirmations, typing status
+    if (isIgnoredSystemMessage(cleanBody)) {
+      return;
+    }
+
+    // Respect ZapZap Privacy Settings
     try {
-      Object.defineProperty(window.Notification, 'permission', {
+      const savedState = localStorage.getItem('wl:v1');
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed) {
+          if (parsed.notifShowName === false) cleanTitle = 'WhatsApp';
+          if (parsed.notifShowPreview === false) cleanBody = 'Pesan baru...';
+        }
+      }
+    } catch (_) {}
+
+    // If title is generic "WhatsApp", extract real sender name from body if present ("Sender: Message")
+    if (!cleanTitle || cleanTitle.toLowerCase() === 'whatsapp') {
+      if (cleanBody && cleanBody.includes(':')) {
+        const sepIdx = cleanBody.indexOf(':');
+        const potentialSender = cleanBody.slice(0, sepIdx).trim();
+        if (potentialSender.length > 0 && potentialSender.length < 50) {
+          cleanTitle = getCleanSenderTitleText(potentialSender);
+          cleanBody = cleanBody.slice(sepIdx + 1).trim();
+        }
+      }
+    }
+
+    // Permanent deduplication signature (Sender + Message)
+    const sig = cleanTitle + ':::' + cleanBody;
+    if (notifiedMessageSet.has(sig)) {
+      return; // Already notified! NEVER repeat or loop!
+    }
+    notifiedMessageSet.add(sig);
+
+    // Keep memory clean
+    if (notifiedMessageSet.size > 200) {
+      const first = notifiedMessageSet.values().next().value;
+      notifiedMessageSet.delete(first);
+    }
+
+    // Dispatch native Windows notification
+    dispatchWaliteAction('notify', {
+      title: cleanTitle,
+      body: cleanBody,
+      tag: cleanTag
+    });
+  }
+
+  // 1. Force Permissions API & Notification API to report 'granted'
+  try {
+    if (typeof Notification !== 'undefined') {
+      Object.defineProperty(Notification, 'permission', {
         get: () => 'granted',
         configurable: true
       });
-      window.Notification.requestPermission = function (cb) {
-        const p = Promise.resolve('granted');
+      Notification.requestPermission = function (cb) {
         if (typeof cb === 'function') cb('granted');
-        return p;
+        return Promise.resolve('granted');
       };
-    } catch (_) {}
+    }
+    if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
+      const origQuery = navigator.permissions.query.bind(navigator.permissions);
+      navigator.permissions.query = function (desc) {
+        if (desc && desc.name === 'notifications') {
+          return Promise.resolve({
+            state: 'granted',
+            name: 'notifications',
+            onchange: null,
+            addEventListener: function () {},
+            removeEventListener: function () {},
+            dispatchEvent: function () { return false; }
+          });
+        }
+        return origQuery(desc);
+      };
+    }
+  } catch (e) {
+    console.warn('[WaLite] Permission mock error:', e);
+  }
 
-    // Intercept ServiceWorker showNotification to route to WaLite Quick-Reply Toast
-    if (typeof ServiceWorkerRegistration !== 'undefined' && ServiceWorkerRegistration.prototype.showNotification) {
-      const origShowNotification = ServiceWorkerRegistration.prototype.showNotification;
+  // 2. Intercept window.Notification and ServiceWorkerRegistration.prototype.showNotification
+  if (typeof window !== 'undefined') {
+    function WaLiteNotification(title, options) {
+      if (!(this instanceof WaLiteNotification)) {
+        return new WaLiteNotification(title, options);
+      }
+      options = options || {};
+
+      let cleanTitle = getCleanSenderTitleText(title);
+      let cleanTag = (options.tag || cleanTitle).trim();
+
+      dispatchNotification(title, options.body, options.icon, cleanTag, options.image);
+
+      this.title = title;
+      this.options = options;
+      this.onclick = null;
+      this.onclose = null;
+      this.onerror = null;
+
+      if (cleanTag) activeNotificationMap.set(cleanTag, this);
+      if (cleanTitle) activeNotificationMap.set(normalizeTitle(cleanTitle), this);
+
+      this.close = function () {};
+      this.addEventListener = function (type, fn) {
+        if (type === 'click') this.onclick = fn;
+        if (type === 'close') this.onclose = fn;
+      };
+      this.removeEventListener = function () {};
+    }
+
+    if (NativeBrowserNotification) {
+      WaLiteNotification.prototype = Object.create(NativeBrowserNotification.prototype);
+      Object.assign(WaLiteNotification, NativeBrowserNotification);
+    }
+    // Always force permission to be 'granted'
+    Object.defineProperty(WaLiteNotification, 'permission', {
+      get: () => 'granted',
+      set: () => {},
+      configurable: true,
+      enumerable: true
+    });
+    WaLiteNotification.requestPermission = function (cb) {
+      if (typeof cb === 'function') cb('granted');
+      return Promise.resolve('granted');
+    };
+    window.Notification = WaLiteNotification;
+
+    if (typeof ServiceWorkerRegistration !== 'undefined' && ServiceWorkerRegistration.prototype) {
       ServiceWorkerRegistration.prototype.showNotification = function (title, options) {
         try {
-          window.Notification(title, options);
+          options = options || {};
+          let cleanTitle = getCleanSenderTitleText(title);
+          let cleanTag = (options.tag || cleanTitle).trim();
+          dispatchNotification(title, options.body, options.icon, cleanTag, options.image);
         } catch (e) {
           console.warn('[WaLite] SW showNotification error:', e);
         }
-        return origShowNotification.apply(this, arguments);
+        return Promise.resolve();
       };
     }
   }
 
-  // Auto-detect incoming messages from document.title updates or pane-side unread badges
+  // Real-time Taskbar Badge Counter (Counts per unread contact/group conversation)
   (function initIncomingMessageDetector() {
-    let lastUnreadCount = 0;
-    let lastNotifiedSignature = '';
-    let lastNotifiedTime = 0;
-
-    function checkUnread() {
-      const title = document.title || '';
-      const match = title.match(/^\((\d+)\)\s*(.*)$/);
-      if (match) {
-        const count = parseInt(match[1], 10);
-        if (count > lastUnreadCount) {
-          lastUnreadCount = count;
-          setTimeout(() => {
-            try {
-              const rows = document.querySelectorAll('#pane-side [role="row"], #pane-side [role="listitem"], #pane-side div[tabindex]');
-              for (const r of rows) {
-                const hasBadge = r.querySelector('[aria-label*="unread" i], [aria-label*="belum dibaca" i], [aria-label*="pesan baru" i], ._ak8i, span[data-icon*="unread"]');
-                if (hasBadge) {
-                  const titleEl = r.querySelector('span[title], [dir="auto"], ._ak8q');
-                  const senderName = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent || '').trim() : 'WhatsApp';
-                  const bodyEl = r.querySelector('[dir="ltr"], span:not([title]), ._ak8k');
-                  const msgText = bodyEl ? (bodyEl.textContent || '').trim() : 'Pesan baru diterima';
-                  const imgEl = r.querySelector('img');
-                  const avatarSrc = imgEl ? (imgEl.src || '') : '';
-
-                  const sig = senderName + '::' + msgText;
-                  const now = Date.now();
-                  if (sig !== lastNotifiedSignature || (now - lastNotifiedTime > 3000)) {
-                    lastNotifiedSignature = sig;
-                    lastNotifiedTime = now;
-                    dispatchWaliteAction('notify', {
-                      title: senderName,
-                      body: msgText,
-                      icon: avatarSrc,
-                      tag: senderName
-                    });
-                  }
-                  break;
-                }
-              }
-            } catch (err) {
-              console.warn('[WaLite] Unread observer error:', err);
-            }
-          }, 350);
-        } else {
-          lastUnreadCount = count;
+    function updateUnreadAndBadge() {
+      try {
+        let unreadChatCount = 0;
+        const rows = document.querySelectorAll('#pane-side [role="row"], #pane-side [role="listitem"]');
+        for (const r of rows) {
+          const hasUnread = r.querySelector(
+            '[data-testid="icon-unread-count"], [aria-label*="unread" i], [aria-label*="belum dibaca" i], [data-icon*="unread"], [data-testid*="unread"]'
+          );
+          if (hasUnread) {
+            unreadChatCount += 1;
+          }
         }
-      } else {
-        lastUnreadCount = 0;
+
+        // Fallback: if rows are virtualized, count any visible badge elements
+        if (unreadChatCount === 0) {
+          const badgeEls = document.querySelectorAll(
+            '[data-testid="icon-unread-count"], [aria-label*="unread" i], [aria-label*="belum dibaca" i]'
+          );
+          if (badgeEls.length > 0) {
+            unreadChatCount = badgeEls.length;
+          } else {
+            const titleMatch = (document.title || '').match(/^\((\d+)\)/);
+            if (titleMatch) unreadChatCount = 1;
+          }
+        }
+
+        if (unreadChatCount !== lastReportedBadgeCount) {
+          lastReportedBadgeCount = unreadChatCount;
+          dispatchWaliteAction('badge', { count: String(unreadChatCount) });
+        }
+      } catch (err) {
+        console.warn('[WaLite] updateUnreadAndBadge error:', err);
       }
     }
 
-    const titleEl = document.querySelector('title');
-    if (titleEl) {
-      const titleObs = new MutationObserver(checkUnread);
-      titleObs.observe(titleEl, { childList: true, characterData: true, subtree: true });
+    function checkNotificationBanner() {
+      try {
+        const side = document.querySelector('#side') || document.body;
+        if (!side) return;
+        const bannerBtns = side.querySelectorAll('button, div[role="button"], span');
+        for (const b of bannerBtns) {
+          const t = (b.textContent || '').trim();
+          if (
+            t.includes('Nyalakan notifikasi desktop') ||
+            t.includes('Turn on desktop notifications') ||
+            t.includes('Aktifkan notifikasi desktop')
+          ) {
+            b.click();
+            break;
+          }
+        }
+      } catch (_) {}
     }
-    setInterval(checkUnread, 1500);
+
+    function initObservers() {
+      setInterval(updateUnreadAndBadge, 1500);
+      setInterval(checkNotificationBanner, 4000);
+
+      // VoIP / Video Call PiP Floating Window Detector
+      let isCallActive = false;
+      function checkCallStatus() {
+        try {
+          const callEndBtn = document.querySelector(
+            '[data-testid*="call-end"], span[data-icon="end-call"], button[aria-label*="Akhiri" i], button[aria-label*="End call" i], [data-icon="call-end"], div[data-testid*="video-call"], div:has(> video)'
+          );
+          const active = !!callEndBtn;
+          if (active !== isCallActive) {
+            isCallActive = active;
+            dispatchWaliteAction('call-status', { active: String(active) });
+          }
+
+          if (isCallActive && document.hidden) {
+            dispatchWaliteAction('enter-pip', {});
+          }
+        } catch (_) {}
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (isCallActive) {
+          if (document.hidden) {
+            dispatchWaliteAction('enter-pip', {});
+          } else {
+            dispatchWaliteAction('exit-pip', {});
+          }
+        }
+      });
+
+      setInterval(checkCallStatus, 1200);
+
+      let lastDocTitle = document.title;
+      setInterval(() => {
+        const curTitle = document.title || '';
+        if (curTitle !== lastDocTitle) {
+          lastDocTitle = curTitle;
+          updateUnreadAndBadge();
+        }
+      }, 800);
+
+      const titleEl = document.querySelector('title');
+      if (titleEl) {
+        new MutationObserver(() => {
+          updateUnreadAndBadge();
+        }).observe(titleEl, { childList: true, characterData: true, subtree: true });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initObservers, 1500);
+      });
+    } else {
+      setTimeout(initObservers, 1500);
+    }
   })();
 
   // Cursor visibility enhancer: Prevents mouse cursor from disappearing in chat (#main)
@@ -793,20 +798,17 @@
         /* Enforce visible mouse pointer across WhatsApp Web & Chat (#main) */
         * { cursor: auto; }
         [style*="cursor: none"], [style*="cursor:none"] { cursor: default !important; }
-        #main,
-        #main :is([role="row"], .message-in, .message-out, [data-testid*="msg"], .copyable-text, .selectable-text, [data-pre-plain-text]) {
-          cursor: default !important;
-        }
+        #main { cursor: default; }
         #main :is(button, a, [role="button"], [data-tab], [data-icon], [data-testid*="btn"], [data-testid*="menu"], [data-testid*="emoji"], [data-testid*="attach"], [data-testid*="audio-play"], [data-testid*="status"]) {
           cursor: pointer !important;
         }
-        #main footer :is([contenteditable="true"], [role="textbox"], input, textarea) {
+        :is([contenteditable="true"], [role="textbox"], input, textarea, .selectable-text, .copyable-text) {
           cursor: text !important;
         }
         #pane-side {
           cursor: default;
         }
-        #pane-side :is([role="row"], [role="listitem"], [tabindex="-1"]) {
+        #pane-side :is([role="row"], [role="listitem"]) {
           cursor: pointer !important;
         }
       `;
@@ -825,6 +827,116 @@
     if (document.documentElement) {
       cursorObs.observe(document.documentElement, { childList: true, subtree: true });
     }
+  })();
+
+  // Native Test Notification integration into WhatsApp Web Settings -> Notifications
+  (function initWhatsAppSettingsTestButton() {
+    function injectTestRow() {
+      const existing = document.getElementById('walite-settings-test-card');
+
+      // Check if user is currently looking at Settings -> Notifikasi
+      let targetRow = null;
+      const elements = document.querySelectorAll('span, div');
+      for (const el of elements) {
+        const t = (el.textContent || '').trim();
+        if (t === 'Pesan' || t === 'Messages') {
+          if (el.children.length === 0 && el.parentElement && !el.closest('#main') && !el.closest('#pane-side')) {
+            targetRow = el.parentElement;
+            break;
+          }
+        }
+      }
+      if (!targetRow) {
+        for (const el of elements) {
+          const t = (el.textContent || '').trim();
+          if (t === 'Notifikasi pesan' || t === 'Message notifications' || t === 'Suara pesan masuk') {
+            if (!el.closest('#main') && !el.closest('#pane-side')) {
+              targetRow = el.closest('div[role="listitem"]') || el.closest('div[role="button"]') || el.closest('div[tabindex]') || el.parentElement.parentElement;
+              break;
+            }
+          }
+        }
+      }
+
+      // If user navigated away from Notifications settings, remove card
+      if (!targetRow || !targetRow.parentElement) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      if (existing) return;
+
+      const container = targetRow.parentElement;
+      const card = document.createElement('div');
+      card.id = 'walite-settings-test-card';
+      card.style.cssText = `
+        margin: 12px 16px 16px 16px !important;
+        padding: 12px 14px !important;
+        background: #202c33 !important;
+        border: 1px solid #00a884 !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+      `;
+      card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; pointer-events: none;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 168, 132, 0.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg style="width: 17px; height: 17px; fill: #00a884;" viewBox="0 0 24 24">
+              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+            </svg>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 13px; font-weight: 600; color: #e9edef;">Tes Notifikasi & Balas Cepat</span>
+            <span style="font-size: 11px; color: #8696a0;">Uji coba notifikasi melayang WaLite</span>
+          </div>
+        </div>
+        <button type="button" style="
+          background: #00a884;
+          color: #111b21;
+          border: none;
+          border-radius: 6px;
+          padding: 6px 12px;
+          font-weight: 700;
+          font-size: 12px;
+          cursor: pointer;
+          white-space: nowrap;
+        ">Uji Coba</button>
+      `;
+
+      function runTest(e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        if (typeof window.triggerWaliteTestNotification === 'function') {
+          window.triggerWaliteTestNotification();
+        } else {
+          try {
+            new window.Notification('Budi Santoso', {
+              body: 'Halo! Ini pesan tes notifikasi dan balas cepat dari WaLite.',
+              tag: 'test-notification'
+            });
+          } catch (_) {}
+        }
+      }
+
+      card.addEventListener('click', runTest);
+      const btn = card.querySelector('button');
+      if (btn) btn.addEventListener('click', runTest);
+
+      container.insertBefore(card, targetRow);
+    }
+
+    const obs = new MutationObserver(injectTestRow);
+    if (document.body) {
+      obs.observe(document.body, { childList: true, subtree: true });
+    }
+    setInterval(injectTestRow, 600);
   })();
 
   // Safely Remove Desktop Upsell Banner across WhatsApp Web without freezing the UI thread
@@ -1038,4 +1150,55 @@
     },
     false
   );
+
+  // Enable Native WhatsApp Web Calling & Calls Tab (Log Telepon)
+  (function initWhatsAppWebCalling() {
+    function hookModule(mod) {
+      if (!mod || typeof mod.getABPropConfigValue !== 'function') return false;
+      if (mod.getABPropConfigValue.__walite_hooked__) return true;
+
+      const original = mod.getABPropConfigValue;
+      const hooked = function (key) {
+        switch (key) {
+          case 'enable_web_calling':
+          case 'enable_web_group_calling':
+          case 'web_voip_call_tab_new_call':
+          case 'web_voip_call_history':
+          case 'web_voip_screen_sharing':
+          case 'web_voip_call_control_in_header':
+          case 'web_voip_camera_switching':
+          case 'web_voip_desktop_screen_share':
+            return true;
+          case 'calling_disabled':
+            return false;
+          default:
+            return original.apply(this, arguments);
+        }
+      };
+      hooked.__walite_hooked__ = true;
+      hooked.__walite_orig__ = original;
+      mod.getABPropConfigValue = hooked;
+      console.log('[WaLite] WAWebABProps hooked successfully: native Calling & Calls Tab enabled.');
+      return true;
+    }
+
+    function checkHook() {
+      try {
+        if (typeof window.require === 'function') {
+          const mod = window.require('WAWebABProps');
+          if (hookModule(mod)) return true;
+        }
+      } catch (_) {}
+      return false;
+    }
+
+    if (!checkHook()) {
+      const interval = setInterval(() => {
+        if (checkHook()) {
+          clearInterval(interval);
+        }
+      }, 300);
+      setTimeout(() => clearInterval(interval), 60000);
+    }
+  })();
 })();

@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -8,12 +10,469 @@ use tauri::{
     Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
+static ALWAYS_ASK_SAVE_AS: AtomicBool = AtomicBool::new(false);
+static SHOW_DOWNLOAD_NOTIF: AtomicBool = AtomicBool::new(true);
+static LAST_SAVE_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+static LAST_CHOSEN_DOWNLOAD_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
+static LAST_ACTION_STAMP: Mutex<Option<(String, std::time::Instant)>> = Mutex::new(None);
+static IS_CALL_ACTIVE: AtomicBool = AtomicBool::new(false);
+static IS_PIP_MODE: AtomicBool = AtomicBool::new(false);
+static SAVED_NORMAL_SIZE: Mutex<Option<(f64, f64)>> = Mutex::new(None);
+static SAVED_NORMAL_POS: Mutex<Option<(i32, i32)>> = Mutex::new(None);
+
 const TARGET_URL: &str = "https://web.whatsapp.com";
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,Translate,HideCursorWhileTyping,msSmartScreenProtection \
+const BROWSER_ARGS: &str = "--disable-features=Translate,HideCursorWhileTyping,msSmartScreenProtection \
     --no-first-run \
     --disable-background-timer-throttling \
     --disable-renderer-backgrounding \
     --disable-backgrounding-occluded-windows";
+
+#[cfg(target_os = "windows")]
+#[repr(C)]
+#[allow(non_snake_case)]
+struct OPENFILENAMEW {
+    lStructSize: u32,
+    hwndOwner: *mut std::ffi::c_void,
+    hInstance: *mut std::ffi::c_void,
+    lpstrFilter: *const u16,
+    lpstrCustomFilter: *mut u16,
+    nMaxCustFilter: u32,
+    nFilterIndex: u32,
+    lpstrFile: *mut u16,
+    nMaxFile: u32,
+    lpstrFileTitle: *mut u16,
+    nMaxFileTitle: u32,
+    lpstrInitialDir: *const u16,
+    lpstrTitle: *const u16,
+    Flags: u32,
+    nFileOffset: u16,
+    nFileExtension: u16,
+    lpstrDefExt: *const u16,
+    lCustData: isize,
+    lpfnHook: *mut std::ffi::c_void,
+    lpTemplateName: *const u16,
+    pvReserved: *mut std::ffi::c_void,
+    dwReserved: u32,
+    FlagsEx: u32,
+}
+
+#[cfg(target_os = "windows")]
+fn show_windows_save_dialog(
+    hwnd_owner: *mut std::ffi::c_void,
+    default_dir: &std::path::Path,
+    default_filename: &str,
+) -> Option<PathBuf> {
+    use std::os::windows::ffi::OsStrExt;
+
+    #[link(name = "comdlg32")]
+    extern "system" {
+        fn GetSaveFileNameW(lpofn: *mut OPENFILENAMEW) -> i32;
+    }
+
+    const OFN_OVERWRITEPROMPT: u32 = 0x00000002;
+    const OFN_PATHMUSTEXIST: u32 = 0x00000800;
+    const OFN_EXPLORER: u32 = 0x00080000;
+    const OFN_ENABLESIZING: u32 = 0x00800000;
+    const OFN_NOCHANGEDIR: u32 = 0x00000008;
+
+    let mut file_buf = vec![0u16; 1024];
+    let default_name_wide: Vec<u16> = std::ffi::OsStr::new(default_filename)
+        .encode_wide()
+        .collect();
+    let copy_len = default_name_wide.len().min(file_buf.len() - 1);
+    file_buf[..copy_len].copy_from_slice(&default_name_wide[..copy_len]);
+
+    let ext_opt = std::path::Path::new(default_filename)
+        .extension()
+        .and_then(|e| e.to_str());
+
+    let filter_wide = if let Some(ext) = ext_opt {
+        let part1 = format!("{} File (*.{})", ext.to_uppercase(), ext);
+        let part2 = format!("*.{}", ext);
+        let part3 = "All Files (*.*)";
+        let part4 = "*.*";
+        let mut f: Vec<u16> = Vec::new();
+        f.extend(part1.encode_utf16());
+        f.push(0);
+        f.extend(part2.encode_utf16());
+        f.push(0);
+        f.extend(part3.encode_utf16());
+        f.push(0);
+        f.extend(part4.encode_utf16());
+        f.push(0);
+        f.push(0);
+        f
+    } else {
+        let mut f: Vec<u16> = Vec::new();
+        f.extend("All Files (*.*)".encode_utf16());
+        f.push(0);
+        f.extend("*.*".encode_utf16());
+        f.push(0);
+        f.push(0);
+        f
+    };
+
+    let title = "Simpan Berkas Sebagai...\0";
+    let title_wide: Vec<u16> = title.encode_utf16().collect();
+
+    let mut init_dir_wide: Vec<u16> = default_dir.as_os_str().encode_wide().collect();
+    init_dir_wide.push(0);
+
+    let def_ext_wide: Option<Vec<u16>> = ext_opt.map(|e| {
+        let mut v: Vec<u16> = std::ffi::OsStr::new(e).encode_wide().collect();
+        v.push(0);
+        v
+    });
+
+    let mut ofn: OPENFILENAMEW = unsafe { std::mem::zeroed() };
+    ofn.lStructSize = std::mem::size_of::<OPENFILENAMEW>() as u32;
+    ofn.hwndOwner = hwnd_owner;
+    ofn.lpstrFilter = filter_wide.as_ptr();
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFile = file_buf.as_mut_ptr();
+    ofn.nMaxFile = file_buf.len() as u32;
+    ofn.lpstrInitialDir = init_dir_wide.as_ptr();
+    ofn.lpstrTitle = title_wide.as_ptr();
+    ofn.lpstrDefExt = def_ext_wide.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null());
+    ofn.Flags = OFN_EXPLORER
+        | OFN_OVERWRITEPROMPT
+        | OFN_PATHMUSTEXIST
+        | OFN_ENABLESIZING
+        | OFN_NOCHANGEDIR;
+
+    let success = unsafe { GetSaveFileNameW(&mut ofn) };
+    if success != 0 {
+        use std::os::windows::ffi::OsStringExt;
+        let len = file_buf.iter().position(|&c| c == 0).unwrap_or(file_buf.len());
+        let os_str = std::ffi::OsString::from_wide(&file_buf[..len]);
+        Some(PathBuf::from(os_str))
+    } else {
+        None
+    }
+}
+
+fn open_folder_and_select(path_str: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let arg = format!("/select,\"{}\"", path_str);
+        let wide_arg: Vec<u16> = std::ffi::OsStr::new(&arg).encode_wide().chain(Some(0)).collect();
+        let wide_explorer: Vec<u16> = std::ffi::OsStr::new("explorer.exe").encode_wide().chain(Some(0)).collect();
+        unsafe {
+            #[link(name = "shell32")]
+            extern "system" {
+                fn ShellExecuteW(
+                    hwnd: *mut std::ffi::c_void,
+                    lpOperation: *const u16,
+                    lpFile: *const u16,
+                    lpParameters: *const u16,
+                    lpDirectory: *const u16,
+                    nShowCmd: i32,
+                ) -> isize;
+            }
+            const SW_SHOWNORMAL: i32 = 1;
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                std::ptr::null(),
+                wide_explorer.as_ptr(),
+                wide_arg.as_ptr(),
+                std::ptr::null(),
+                SW_SHOWNORMAL,
+            );
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Some(parent) = std::path::Path::new(path_str).parent() {
+            open_file_with_default_app(&parent.to_string_lossy());
+        }
+    }
+}
+
+fn show_download_finished_toast(_app: &tauri::AppHandle, path: &std::path::Path) {
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("Berkas");
+    let path_clone = path.to_path_buf();
+
+    #[cfg(target_os = "windows")]
+    {
+        use tauri_winrt_notification::Toast;
+        const APP_ID: &str = "id.my.vianto06.walite";
+        let mut toast = Toast::new(APP_ID);
+        toast = toast.title("Unduhan Selesai");
+        toast = toast.text1(file_name);
+        toast = toast.add_button("Buka Berkas", "open_file");
+        toast = toast.add_button("Buka Folder", "open_folder");
+
+        let p1 = path_clone.clone();
+        toast = toast.on_activated(move |action| {
+            let path_str = p1.to_string_lossy().to_string();
+            match action.as_deref() {
+                Some("open_folder") => {
+                    open_folder_and_select(&path_str);
+                }
+                _ => {
+                    open_file_with_default_app(&path_str);
+                }
+            }
+            Ok(())
+        });
+
+        if toast.show().is_err() {
+            let p2 = path_clone.clone();
+            let mut fb = Toast::new(Toast::POWERSHELL_APP_ID);
+            fb = fb.title("Unduhan Selesai");
+            fb = fb.text1(file_name);
+            fb = fb.add_button("Buka Berkas", "open_file");
+            fb = fb.add_button("Buka Folder", "open_folder");
+            fb = fb.on_activated(move |action| {
+                let path_str = p2.to_string_lossy().to_string();
+                match action.as_deref() {
+                    Some("open_folder") => {
+                        open_folder_and_select(&path_str);
+                    }
+                    _ => {
+                        open_file_with_default_app(&path_str);
+                    }
+                }
+                Ok(())
+            });
+            let _ = fb.show();
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use tauri_plugin_notification::NotificationExt;
+        let _ = _app.notification().builder()
+            .title("Unduhan Selesai")
+            .body(file_name)
+            .show();
+    }
+}
+
+fn show_native_message_notification(
+    app: &tauri::AppHandle,
+    title: &str,
+    body: &str,
+    tag: &str,
+) {
+    #[cfg(target_os = "windows")]
+    {
+        use winrt_toast_reborn::content::input::InputType;
+        use winrt_toast_reborn::{
+            Action, ActivatedAction, Input, Text, Toast, ToastManager,
+        };
+        const APP_ID: &str = "id.my.vianto06.walite";
+
+        let app_handle = app.clone();
+        let title_str = title.to_string();
+        let tag_str = tag.to_string();
+
+        let is_call = body.to_lowercase().contains("telepon")
+            || body.to_lowercase().contains("panggilan")
+            || body.to_lowercase().contains("call")
+            || tag.to_lowercase().contains("call");
+
+        let mut toast = Toast::new();
+        toast
+            .tag(tag)
+            .launch("open")
+            .text1(title)
+            .text2(Text::new(body));
+
+        if is_call {
+            toast.scenario(winrt_toast_reborn::Scenario::IncomingCall);
+            toast.action(Action::new("Jawab", "accept_call", ""));
+            toast.action(Action::new("Tolak", "decline_call", ""));
+        } else {
+            toast.input(
+                Input::new("replyBox", InputType::Text)
+                    .with_placeholder("Ketik balasan cepat...")
+            );
+            toast.action(
+                Action::new("Kirim", "reply", "").with_input_id("replyBox")
+            );
+            toast.action(
+                Action::new("Buka Chat", "open", "")
+            );
+        }
+
+        let manager = ToastManager::new(APP_ID);
+        let res = manager
+            .on_activated(Some("replyBox"), move |action: Option<ActivatedAction>| {
+                if let Some(ref act) = action {
+                    if act.arg == "accept_call" {
+                        if let Some(main_win) = app_handle.get_webview_window("main") {
+                            let _ = main_win.show();
+                            let _ = main_win.unminimize();
+                            let _ = main_win.set_focus();
+                            let js = "if(typeof window.__walite_accept_call==='function') window.__walite_accept_call();";
+                            let _ = main_win.eval(js);
+                        }
+                        return;
+                    }
+                    if act.arg == "decline_call" {
+                        if let Some(main_win) = app_handle.get_webview_window("main") {
+                            let js = "if(typeof window.__walite_decline_call==='function') window.__walite_decline_call();";
+                            let _ = main_win.eval(js);
+                        }
+                        return;
+                    }
+                }
+
+                let mut is_reply = false;
+                let mut reply_text = String::new();
+
+                if let Some(ref act) = action {
+                    if let Some(text) = act.values.get("replyBox") {
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            is_reply = true;
+                            reply_text = trimmed.to_string();
+                        }
+                    }
+                }
+
+                if is_reply {
+                    if let Some(main_win) = app_handle.get_webview_window("main") {
+                        let js = format!(
+                            "if(typeof window.__walite_send_inline_reply==='function') window.__walite_send_inline_reply('{}','{}','{}');",
+                            escape_js_str(&title_str),
+                            escape_js_str(&tag_str),
+                            escape_js_str(&reply_text)
+                        );
+                        let _ = main_win.eval(&js);
+                    }
+                } else {
+                    if let Some(main_win) = app_handle.get_webview_window("main") {
+                        let _ = main_win.show();
+                        let _ = main_win.unminimize();
+                        let _ = main_win.set_focus();
+
+                        #[cfg(target_os = "windows")]
+                        if let Ok(hwnd) = main_win.hwnd() {
+                            unsafe {
+                                #[link(name = "user32")]
+                                extern "system" {
+                                    fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+                                    fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+                                    fn BringWindowToTop(hWnd: *mut std::ffi::c_void) -> i32;
+                                }
+                                const SW_RESTORE: i32 = 9;
+                                ShowWindow(hwnd.0, SW_RESTORE);
+                                BringWindowToTop(hwnd.0);
+                                SetForegroundWindow(hwnd.0);
+                            }
+                        }
+
+                        let js = format!(
+                            "if(typeof window.__walite_on_notif_click==='function') window.__walite_on_notif_click('{}','{}');",
+                            escape_js_str(&title_str),
+                            escape_js_str(&tag_str)
+                        );
+                        let _ = main_win.eval(&js);
+                    }
+                }
+            })
+            .show(&toast);
+
+        if res.is_err() {
+            let app_handle_fb = app.clone();
+            let title_fb = title.to_string();
+            let tag_fb = tag.to_string();
+            let manager_fb = ToastManager::new(ToastManager::POWERSHELL_AUM_ID);
+            let _ = manager_fb
+                .on_activated(Some("replyBox"), move |action: Option<ActivatedAction>| {
+                    if let Some(ref act) = action {
+                        if act.arg == "accept_call" {
+                            if let Some(main_win) = app_handle_fb.get_webview_window("main") {
+                                let _ = main_win.show();
+                                let _ = main_win.unminimize();
+                                let _ = main_win.set_focus();
+                                let js = "if(typeof window.__walite_accept_call==='function') window.__walite_accept_call();";
+                                let _ = main_win.eval(js);
+                            }
+                            return;
+                        }
+                        if act.arg == "decline_call" {
+                            if let Some(main_win) = app_handle_fb.get_webview_window("main") {
+                                let js = "if(typeof window.__walite_decline_call==='function') window.__walite_decline_call();";
+                                let _ = main_win.eval(js);
+                            }
+                            return;
+                        }
+                    }
+
+                    let mut is_reply = false;
+                    let mut reply_text = String::new();
+
+                    if let Some(ref act) = action {
+                        if let Some(text) = act.values.get("replyBox") {
+                            let trimmed = text.trim();
+                            if !trimmed.is_empty() {
+                                is_reply = true;
+                                reply_text = trimmed.to_string();
+                            }
+                        }
+                    }
+
+                    if is_reply {
+                        if let Some(main_win) = app_handle_fb.get_webview_window("main") {
+                            let js = format!(
+                                "if(typeof window.__walite_send_inline_reply==='function') window.__walite_send_inline_reply('{}','{}','{}');",
+                                escape_js_str(&title_fb),
+                                escape_js_str(&tag_fb),
+                                escape_js_str(&reply_text)
+                            );
+                            let _ = main_win.eval(&js);
+                        }
+                    } else {
+                        if let Some(main_win) = app_handle_fb.get_webview_window("main") {
+                            let _ = main_win.show();
+                            let _ = main_win.unminimize();
+                            let _ = main_win.set_focus();
+
+                            #[cfg(target_os = "windows")]
+                            if let Ok(hwnd) = main_win.hwnd() {
+                                unsafe {
+                                    #[link(name = "user32")]
+                                    extern "system" {
+                                        fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+                                        fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+                                        fn BringWindowToTop(hWnd: *mut std::ffi::c_void) -> i32;
+                                    }
+                                    const SW_RESTORE: i32 = 9;
+                                    ShowWindow(hwnd.0, SW_RESTORE);
+                                    BringWindowToTop(hwnd.0);
+                                    SetForegroundWindow(hwnd.0);
+                                }
+                            }
+
+                            let js = format!(
+                                "if(typeof window.__walite_on_notif_click==='function') window.__walite_on_notif_click('{}','{}');",
+                                escape_js_str(&title_fb),
+                                escape_js_str(&tag_fb)
+                            );
+                            let _ = main_win.eval(&js);
+                        }
+                    }
+                })
+                .show(&toast);
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use tauri_plugin_notification::NotificationExt;
+        let _ = app.notification().builder()
+            .title(title)
+            .body(body)
+            .show();
+    }
+}
 
 fn get_persistent_data_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
@@ -71,16 +530,133 @@ fn open_in_default_browser(url: &str) {
     }
 }
 
+fn open_file_with_default_app(path: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let wide_path: Vec<u16> = std::ffi::OsStr::new(path).encode_wide().chain(Some(0)).collect();
+        let wide_open: Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(Some(0)).collect();
+        unsafe {
+            #[link(name = "shell32")]
+            extern "system" {
+                fn ShellExecuteW(
+                    hwnd: *mut std::ffi::c_void,
+                    lpOperation: *const u16,
+                    lpFile: *const u16,
+                    lpParameters: *const u16,
+                    lpDirectory: *const u16,
+                    nShowCmd: i32,
+                ) -> isize;
+            }
+            const SW_SHOWNORMAL: i32 = 1;
+            let ret = ShellExecuteW(
+                std::ptr::null_mut(),
+                wide_open.as_ptr(),
+                wide_path.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOWNORMAL,
+            );
+            if ret <= 32 {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                let _ = std::process::Command::new("cmd")
+                    .args(["/C", "start", "", path])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .spawn();
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = std::process::Command::new("xdg-open")
+            .arg(path)
+            .spawn();
+    }
+}
+
+fn enter_pip_mode(window: &tauri::WebviewWindow) {
+    if IS_PIP_MODE.load(Ordering::SeqCst) {
+        return;
+    }
+    if let Ok(size) = window.inner_size() {
+        let mut saved_size = SAVED_NORMAL_SIZE.lock().unwrap();
+        *saved_size = Some((size.width as f64, size.height as f64));
+    }
+    if let Ok(pos) = window.outer_position() {
+        let mut saved_pos = SAVED_NORMAL_POS.lock().unwrap();
+        *saved_pos = Some((pos.x, pos.y));
+    }
+    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+        width: 340.0,
+        height: 230.0,
+    }));
+    if let Ok(Some(monitor)) = window.primary_monitor() {
+        let scale = monitor.scale_factor();
+        let mon_size = monitor.size();
+        let pip_w = (340.0 * scale) as i32;
+        let pip_h = (230.0 * scale) as i32;
+        let x = mon_size.width as i32 - pip_w - (20.0 * scale) as i32;
+        let y = mon_size.height as i32 - pip_h - (60.0 * scale) as i32;
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
+    }
+    let _ = window.set_always_on_top(true);
+    IS_PIP_MODE.store(true, Ordering::SeqCst);
+}
+
+fn restore_from_pip_mode(window: &tauri::WebviewWindow) {
+    if !IS_PIP_MODE.load(Ordering::SeqCst) {
+        return;
+    }
+    let _ = window.set_always_on_top(false);
+    let size = SAVED_NORMAL_SIZE.lock().unwrap().unwrap_or((1024.0, 768.0));
+    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+        width: size.0,
+        height: size.1,
+    }));
+    if let Some(pos) = *SAVED_NORMAL_POS.lock().unwrap() {
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+            x: pos.0,
+            y: pos.1,
+        }));
+    }
+    IS_PIP_MODE.store(false, Ordering::SeqCst);
+}
+
 fn is_allowed_internal_url(url: &Url) -> bool {
-    if url.scheme() == "blob" || url.scheme() == "data" || url.as_str() == "about:blank" {
+    let scheme = url.scheme();
+    if scheme == "blob"
+        || scheme == "data"
+        || scheme == "about"
+        || scheme == "chrome-extension"
+        || scheme == "edge-extension"
+        || scheme == "chrome"
+        || scheme == "chrome-untrusted"
+        || scheme == "edge"
+        || scheme == "filesystem"
+    {
         return true;
     }
-    if url.scheme() == "https" {
+    if scheme == "https" || scheme == "http" {
         if let Some(host) = url.host_str() {
-            if host == "web.whatsapp.com"
-                || host.ends_with(".whatsapp.com")
-                || host.ends_with(".whatsapp.net")
-                || host.ends_with(".fbcdn.net")
+            let h = host.to_lowercase();
+            if h == "web.whatsapp.com"
+                || h.ends_with(".whatsapp.com")
+                || h.ends_with(".whatsapp.net")
+                || h.ends_with(".fbcdn.net")
+                || h.ends_with(".facebook.com")
+                || h.ends_with(".meta.com")
+                || h.ends_with(".adobe.com")
+                || h.ends_with(".adobe.io")
+                || h.ends_with(".acrobat.com")
+                || h.ends_with(".adobelogin.com")
+                || h.ends_with(".demdex.net")
+                || h.ends_with(".typekit.net")
+                || h.ends_with(".adobeaemcloud.com")
+                || h.ends_with(".adobedtm.com")
+                || h.ends_with(".adast.adobe.io")
+                || h.ends_with(".adobecanvas.com")
+                || h.ends_with(".documentcloud.adobe.com")
             {
                 return true;
             }
@@ -111,6 +687,130 @@ fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
     }
 }
 
+fn create_badge_icon(count: i64) -> Vec<u8> {
+    const W: usize = 32;
+    const H: usize = 32;
+    let mut rgba = vec![0u8; W * H * 4];
+
+    // Anti-aliased circle at center (15.5, 15.5) with radius 14.5
+    for y in 0..H {
+        for x in 0..W {
+            let dx = (x as f32) - 15.5;
+            let dy = (y as f32) - 15.5;
+            let dist = (dx * dx + dy * dy).sqrt();
+            let idx = (y * W + x) * 4;
+
+            if dist <= 14.8 {
+                let alpha = if dist > 13.8 {
+                    ((14.8 - dist) * 255.0) as u8
+                } else {
+                    255
+                };
+                // WhatsApp vibrant badge green (#25D366 / #00a884)
+                rgba[idx] = 0;       // R
+                rgba[idx + 1] = 168; // G
+                rgba[idx + 2] = 132; // B
+                rgba[idx + 3] = alpha;
+            }
+        }
+    }
+
+    // 5x7 font (5 bits wide, 7 bits high)
+    let font_5x7: [[u8; 7]; 10] = [
+        [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110], // 0
+        [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110], // 1
+        [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111], // 2
+        [0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110], // 3
+        [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010], // 4
+        [0b11111, 0b10000, 0b10000, 0b11110, 0b00001, 0b00001, 0b11110], // 5
+        [0b01110, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110], // 6
+        [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000], // 7
+        [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110], // 8
+        [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b01110], // 9
+    ];
+
+    if count >= 1 && count <= 9 {
+        let glyph = font_5x7[count as usize];
+        // Center 5x7 scaled by 2 (10x14) in 32x32: offset_x = 11, offset_y = 9
+        let offset_x = 11;
+        let offset_y = 9;
+
+        for (r, row) in glyph.iter().enumerate() {
+            for c in 0..5 {
+                if (row & (1 << (4 - c))) != 0 {
+                    // Draw bold 2x2 pixels for each bit
+                    for dy in 0..2 {
+                        for dx in 0..2 {
+                            let px = offset_x + c * 2 + dx;
+                            let py = offset_y + r * 2 + dy;
+                            if px < W && py < H {
+                                let idx = (py * W + px) * 4;
+                                rgba[idx] = 255;
+                                rgba[idx + 1] = 255;
+                                rgba[idx + 2] = 255;
+                                rgba[idx + 3] = 255;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else if count > 9 {
+        // Draw "9+" in 32x32
+        // '9' using 4x7 at x=6, '+' at x=18
+        let glyph9_4x7: [u8; 7] = [
+            0b1110,
+            0b1001,
+            0b1001,
+            0b1111,
+            0b0001,
+            0b0001,
+            0b1110,
+        ];
+        // Scale '9' by 2 (8x14)
+        for (r, row) in glyph9_4x7.iter().enumerate() {
+            for c in 0..4 {
+                if (row & (1 << (3 - c))) != 0 {
+                    for dy in 0..2 {
+                        for dx in 0..2 {
+                            let px = 6 + c * 2 + dx;
+                            let py = 9 + r * 2 + dy;
+                            if px < W && py < H {
+                                let idx = (py * W + px) * 4;
+                                rgba[idx] = 255;
+                                rgba[idx + 1] = 255;
+                                rgba[idx + 2] = 255;
+                                rgba[idx + 3] = 255;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Bold '+' at x=18, y=13 (8x8 cross)
+        for y in 12..18 {
+            for x in 19..21 {
+                let idx = (y * W + x) * 4;
+                rgba[idx] = 255;
+                rgba[idx + 1] = 255;
+                rgba[idx + 2] = 255;
+                rgba[idx + 3] = 255;
+            }
+        }
+        for y in 14..16 {
+            for x in 17..23 {
+                let idx = (y * W + x) * 4;
+                rgba[idx] = 255;
+                rgba[idx + 1] = 255;
+                rgba[idx + 2] = 255;
+                rgba[idx + 3] = 255;
+            }
+        }
+    }
+
+    rgba
+}
+
 fn escape_js_str(s: &str) -> String {
     s.replace('\\', "\\\\")
         .replace('\'', "\\'")
@@ -119,84 +819,157 @@ fn escape_js_str(s: &str) -> String {
         .replace('\r', "\\r")
 }
 
+fn base64_encode(data: &[u8]) -> String {
+    const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = if chunk.len() > 1 { chunk[1] } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] } else { 0 };
+        out.push(TABLE[(b0 >> 2) as usize] as char);
+        out.push(TABLE[(((b0 & 3) << 4) | (b1 >> 4)) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(TABLE[(((b1 & 15) << 2) | (b2 >> 6)) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(TABLE[(b2 & 63) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
+}
+
+fn open_or_create_account2(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("account_2") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+        return;
+    }
+
+    let data_dir = get_persistent_data_dir()
+        .parent()
+        .map(|p| p.join("EBWebView_Account2"))
+        .unwrap_or_else(|| get_persistent_data_dir().join("Account2"));
+    let _ = std::fs::create_dir_all(&data_dir);
+
+    let main_url = TARGET_URL.parse().expect("valid target url");
+    let mut builder = WebviewWindowBuilder::new(app, "account_2", WebviewUrl::External(main_url))
+        .title("WaLite - Akun 2")
+        .inner_size(1024.0, 768.0)
+        .min_inner_size(680.0, 500.0)
+        .data_directory(data_dir)
+        .additional_browser_args(BROWSER_ARGS)
+        .disable_drag_drop_handler()
+        .initialization_script(include_str!("../pdf.worker.min.js"))
+        .initialization_script(include_str!("../pdf.min.js"))
+        .initialization_script(include_str!("../wa-privacy-panel.js"))
+        .initialization_script(include_str!("../wa-zapzap-features.js"))
+        .initialization_script(include_str!("../wa-download-manager.js"));
+
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.drag_and_drop(false);
+        builder = builder.user_agent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        builder = builder.user_agent(
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+        );
+    }
+
+    let app_nav = app.clone();
+    builder = builder.on_navigation(move |url| {
+        if url.scheme() == "walite-action" {
+            handle_walite_action(&app_nav, url);
+            return false;
+        }
+        let url_str = url.as_str();
+        if is_allowed_internal_url(&url) {
+            true
+        } else {
+            if is_safe_external_scheme(url.scheme()) {
+                open_in_default_browser(url_str);
+            }
+            false
+        }
+    });
+
+    builder = builder.on_new_window(move |url, _features| {
+        let url_str = url.as_str();
+        if url_str == "about:blank" || url_str.is_empty() {
+            return NewWindowResponse::Deny;
+        }
+        if url.scheme() == "blob" || url.scheme() == "data" {
+            return NewWindowResponse::Allow;
+        }
+        if is_allowed_internal_url(&url) {
+            return NewWindowResponse::Allow;
+        }
+        if is_safe_external_scheme(url.scheme()) {
+            open_in_default_browser(url_str);
+        }
+        NewWindowResponse::Deny
+    });
+
+    if let Ok(win) = builder.build() {
+        let _ = win.show();
+    }
+}
+
 fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
     if url.scheme() != "walite-action" {
         return false;
     }
-    let action = url.host_str().unwrap_or("");
+    let action = url
+        .host_str()
+        .filter(|h| !h.is_empty())
+        .unwrap_or_else(|| url.path().trim_start_matches('/'));
     let mut params = std::collections::HashMap::new();
     for (k, v) in url.query_pairs() {
         params.insert(k.to_string(), v.to_string());
     }
 
+    // Only deduplicate actions that might repeat unintentionally (like open-file, open-folder, send-reply)
+    // Never block notifications!
+    if action != "notify" {
+        let action_key = format!("{}:{}:{:?}", action, url.path(), params.get("path").or(params.get("text")));
+        let mut last_stamp = LAST_ACTION_STAMP.lock().unwrap();
+        let now = std::time::Instant::now();
+        if let Some((ref last_key, last_time)) = *last_stamp {
+            if last_key == &action_key && now.duration_since(last_time).as_millis() < 400 {
+                return true;
+            }
+        }
+        *last_stamp = Some((action_key, now));
+    }
+
     match action {
-        "notify" => {
-            let title = params.get("title").cloned().unwrap_or_default();
-            let body = params.get("body").cloned().unwrap_or_default();
-            let icon = params.get("icon").cloned().unwrap_or_default();
-            let tag = params.get("tag").cloned().unwrap_or_default();
-
-            if let Some(toast_win) = app.get_webview_window("toast") {
-                let mut toast_w = 380;
-                let mut toast_h = 135;
-                let mut x = 100;
-                let mut y = 100;
-
-                if let Ok(Some(monitor)) = app.primary_monitor() {
-                    let scale = monitor.scale_factor();
-                    let size = monitor.size();
-                    toast_w = (380.0 * scale) as i32;
-                    toast_h = (135.0 * scale) as i32;
-                    let margin_x = (20.0 * scale) as i32;
-                    let margin_y = (60.0 * scale) as i32;
-                    x = size.width as i32 - toast_w - margin_x;
-                    y = size.height as i32 - toast_h - margin_y;
-                    let _ = toast_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
-                }
-
-                let safe_title = escape_js_str(&title);
-                let safe_body = escape_js_str(&body);
-                let safe_icon = escape_js_str(&icon);
-                let safe_tag = escape_js_str(&tag);
-                let js = format!(
-                    "(function(){{function _try(n){{if(typeof window.showToast==='function'){{window.showToast('{}','{}','{}','{}');}}else if(n<30){{setTimeout(function(){{_try(n+1);}},80);}}}} _try(0);}})();",
-                    safe_title, safe_body, safe_icon, safe_tag
-                );
-                let _ = toast_win.eval(&js);
-
-                let _ = toast_win.show();
-                let _ = toast_win.unminimize();
-
-                #[cfg(target_os = "windows")]
-                if let Ok(hwnd) = toast_win.hwnd() {
-                    unsafe {
-                        #[link(name = "user32")]
-                        extern "system" {
-                            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
-                            fn SetWindowPos(
-                                hWnd: *mut std::ffi::c_void,
-                                hWndInsertAfter: *mut std::ffi::c_void,
-                                X: i32,
-                                Y: i32,
-                                cx: i32,
-                                cy: i32,
-                                uFlags: u32,
-                            ) -> i32;
-                        }
-                        const HWND_TOPMOST: *mut std::ffi::c_void = -1isize as *mut std::ffi::c_void;
-                        const SWP_NOACTIVATE: u32 = 0x0010;
-                        const SWP_SHOWWINDOW: u32 = 0x0040;
-                        const SW_SHOWNOACTIVATE: i32 = 4;
-                        ShowWindow(hwnd.0, SW_SHOWNOACTIVATE);
-                        SetWindowPos(hwnd.0, HWND_TOPMOST, x, y, toast_w, toast_h, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        "debug-log" => {
+            if let Some(msg) = params.get("msg") {
+                if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                    let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
+                    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
+                        use std::io::Write;
+                        let _ = writeln!(f, "[DEBUG] {}", msg);
                     }
                 }
             }
         }
+        "notify" => {
+            let title = params.get("title").cloned().unwrap_or_default();
+            let body = params.get("body").cloned().unwrap_or_default();
+            let tag = params.get("tag").cloned().unwrap_or_default();
+            show_native_message_notification(app, &title, &body, &tag);
+        }
         "open-chat" => {
-            if let Some(toast_win) = app.get_webview_window("toast") {
-                let _ = toast_win.hide();
-            }
             let title = params.get("title").cloned().unwrap_or_default();
             let tag = params.get("tag").cloned().unwrap_or_default();
             if let Some(main_win) = app.get_webview_window("main") {
@@ -223,30 +996,116 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                 let safe_title = escape_js_str(&title);
                 let safe_tag = escape_js_str(&tag);
                 let js = format!(
-                    "if (window.__walite_open_chat) window.__walite_open_chat('{}', '{}');",
+                    "(function(){{ function _go(n){{ if(window.__walite_on_notif_click){{ if(!window.__walite_on_notif_click('{}','{}') && n<12){{ setTimeout(function(){{_go(n+1);}}, 150); }} }}else if(n<12){{ setTimeout(function(){{_go(n+1);}}, 150); }} }} _go(0); }})();",
                     safe_title, safe_tag
                 );
                 let _ = main_win.eval(&js);
             }
         }
-        "send-reply" => {
-            let title = params.get("title").cloned().unwrap_or_default();
-            let tag = params.get("tag").cloned().unwrap_or_default();
-            let text = params.get("text").cloned().unwrap_or_default();
+        "shortcuts" => {
             if let Some(main_win) = app.get_webview_window("main") {
-                let safe_title = escape_js_str(&title);
-                let safe_tag = escape_js_str(&tag);
-                let safe_text = escape_js_str(&text);
-                let js = format!(
-                    "if (window.__walite_send_reply) window.__walite_send_reply('{}', '{}', '{}');",
-                    safe_title, safe_tag, safe_text
-                );
-                let _ = main_win.eval(&js);
+                let _ = main_win.show();
+                let _ = main_win.unminimize();
+                let _ = main_win.set_focus();
+                let _ = main_win.eval("if(typeof window.waliteOpenShortcutsGuide==='function') window.waliteOpenShortcutsGuide();");
             }
         }
-        "close-toast" => {
-            if let Some(toast_win) = app.get_webview_window("toast") {
-                let _ = toast_win.hide();
+        "open-account" => {
+            open_or_create_account2(app);
+        }
+        "badge" => {
+            if let Some(count_str) = params.get("count") {
+                let count: i64 = count_str.parse().unwrap_or(0);
+                if let Some(main_win) = app.get_webview_window("main") {
+                    if count > 0 {
+                        let _ = main_win.set_title(&format!("({}) WaLite", count));
+                        let rgba = create_badge_icon(count);
+                        let img = tauri::image::Image::new_owned(rgba, 32, 32);
+                        let _ = main_win.set_overlay_icon(Some(img));
+                    } else {
+                        let _ = main_win.set_title("WaLite");
+                        let _ = main_win.set_overlay_icon(None);
+                    }
+                }
+            }
+        }
+        "enter-pip" => {
+            if let Some(main_win) = app.get_webview_window("main") {
+                enter_pip_mode(&main_win);
+            }
+        }
+        "exit-pip" => {
+            if let Some(main_win) = app.get_webview_window("main") {
+                restore_from_pip_mode(&main_win);
+            }
+        }
+        "call-status" => {
+            let active = params.get("active").map(|s| s == "true").unwrap_or(false);
+            IS_CALL_ACTIVE.store(active, Ordering::SeqCst);
+            if !active && IS_PIP_MODE.load(Ordering::SeqCst) {
+                if let Some(main_win) = app.get_webview_window("main") {
+                    restore_from_pip_mode(&main_win);
+                }
+            }
+        }
+        "accept-call" => {
+            if let Some(main_win) = app.get_webview_window("main") {
+                let _ = main_win.show();
+                let _ = main_win.unminimize();
+                let _ = main_win.set_focus();
+                let js = "if (window.__walite_accept_call) window.__walite_accept_call();";
+                let _ = main_win.eval(js);
+            }
+        }
+        "decline-call" => {
+            if let Some(main_win) = app.get_webview_window("main") {
+                let js = "if (window.__walite_decline_call) window.__walite_decline_call();";
+                let _ = main_win.eval(js);
+            }
+        }
+        "open-devtools" => {
+            if let Some(main_win) = app.get_webview_window("main") {
+                main_win.open_devtools();
+            }
+        }
+        "open-last-download" => {
+            let last = LAST_CHOSEN_DOWNLOAD_PATH.lock().unwrap().clone();
+            if let Some(path) = last {
+                if path.exists() {
+                    open_file_with_default_app(&path.to_string_lossy());
+                }
+            }
+        }
+        "open-file" => {
+            if let Some(path_str) = params.get("path") {
+                let path = std::path::Path::new(path_str);
+                if path.exists() {
+                    open_file_with_default_app(path_str);
+                }
+            }
+        }
+        "open-folder" => {
+            if let Some(path_str) = params.get("path") {
+                open_folder_and_select(path_str);
+            }
+        }
+        "set-setting" => {
+            if let Some(key) = params.get("key") {
+                if let Some(val) = params.get("val") {
+                    let bool_val = val == "true" || val == "1";
+                    match key.as_str() {
+                        "saveAs" => {
+                            ALWAYS_ASK_SAVE_AS.store(bool_val, Ordering::SeqCst);
+                        }
+                        "downloadNotif" => {
+                            SHOW_DOWNLOAD_NOTIF.store(bool_val, Ordering::SeqCst);
+                        }
+                        "autoStart" => {
+                            set_run_on_startup(bool_val);
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
         _ => {}
@@ -263,6 +1122,9 @@ fn walite_action(
     icon: Option<String>,
     tag: Option<String>,
     text: Option<String>,
+    path: Option<String>,
+    key: Option<String>,
+    val: Option<String>,
 ) {
     let mut params = std::collections::HashMap::new();
     if let Some(t) = title { params.insert("title".to_string(), t); }
@@ -270,6 +1132,9 @@ fn walite_action(
     if let Some(i) = icon { params.insert("icon".to_string(), i); }
     if let Some(g) = tag { params.insert("tag".to_string(), g); }
     if let Some(x) = text { params.insert("text".to_string(), x); }
+    if let Some(p) = path { params.insert("path".to_string(), p); }
+    if let Some(k) = key { params.insert("key".to_string(), k); }
+    if let Some(v) = val { params.insert("val".to_string(), v); }
 
     let mut query = String::new();
     for (k, v) in &params {
@@ -284,7 +1149,77 @@ fn walite_action(
     }
 }
 
+#[tauri::command]
+fn read_pdf_file(path: String) -> Result<Vec<u8>, String> {
+    std::fs::read(&path).map_err(|e| e.to_string())
+}
+
 #[cfg(target_os = "windows")]
+fn ensure_webview_pdf_preferences() {
+    let base_dirs = vec![
+        get_persistent_data_dir(),
+        get_persistent_data_dir()
+            .parent()
+            .map(|p| p.join("EBWebView_Account2"))
+            .unwrap_or_else(|| get_persistent_data_dir().join("Account2")),
+    ];
+
+    for base_dir in base_dirs {
+        let default_dir = base_dir.join("Default");
+        let _ = std::fs::create_dir_all(&default_dir);
+        let prefs_path = default_dir.join("Preferences");
+
+        let mut json = if prefs_path.exists() {
+            std::fs::read_to_string(&prefs_path)
+                .ok()
+                .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+                .unwrap_or_else(|| serde_json::json!({}))
+        } else {
+            serde_json::json!({})
+        };
+
+        if let Some(obj) = json.as_object_mut() {
+            let plugins = obj.entry("plugins").or_insert_with(|| serde_json::json!({}));
+            if let Some(p_obj) = plugins.as_object_mut() {
+                p_obj.insert("always_open_pdf_externally".to_string(), serde_json::json!(false));
+            }
+            if let Ok(serialized) = serde_json::to_string(&json) {
+                let _ = std::fs::write(&prefs_path, serialized);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_url_parse() {
+    let u = Url::parse("walite-action://debug-log?msg=hello_world").unwrap();
+    println!("scheme: {}", u.scheme());
+    println!("host: {:?}", u.host_str());
+    println!("path: {}", u.path());
+    for (k, v) in u.query_pairs() {
+        println!("query: {} = {}", k, v);
+    }
+}
+
+fn set_run_on_startup(enable: bool) {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::HKEY_CURRENT_USER;
+        use winreg::RegKey;
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok((key, _)) = hkcu.create_subkey(r"Software\Microsoft\Windows\CurrentVersion\Run") {
+            if enable {
+                if let Ok(exe) = std::env::current_exe() {
+                    let exe_path = format!("\"{}\"", exe.to_string_lossy());
+                    let _ = key.set_value("WaLite", &exe_path);
+                }
+            } else {
+                let _ = key.delete_value("WaLite");
+            }
+        }
+    }
+}
+
 fn init_windows_app_identity() {
     use std::os::windows::ffi::OsStrExt;
     const APP_ID: &str = "id.my.vianto06.walite";
@@ -299,12 +1234,60 @@ fn init_windows_app_identity() {
         const SHCNE_ASSOCCHANGED: i32 = 0x08000000;
         const SHCNF_IDLIST: u32 = 0x0000;
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, std::ptr::null(), std::ptr::null());
+
+        #[link(name = "user32")]
+        extern "system" {
+            fn SystemParametersInfoW(uiAction: u32, uiParam: u32, pvParam: *mut std::ffi::c_void, fWinIni: u32) -> i32;
+        }
+        const SPI_SETMOUSEVANISH: u32 = 0x1021;
+        // Disable Windows "hide mouse pointer while typing" feature to resolve WebView2 disappearing cursor
+        let _ = SystemParametersInfoW(SPI_SETMOUSEVANISH, 0, std::ptr::null_mut(), 0);
+    }
+
+    // Register AUMID in HKCU\Software\Classes\AppUserModelId\id.my.vianto06.walite
+    // so Windows Action Center and WinRT Toast Notification Manager recognize it as "WaLite"
+    {
+        use winreg::enums::HKEY_CURRENT_USER;
+        use winreg::RegKey;
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok((key, _)) = hkcu.create_subkey(format!(r"Software\Classes\AppUserModelId\{}", APP_ID)) {
+            let _ = key.set_value("DisplayName", &"WaLite");
+            if let Ok(exe) = std::env::current_exe() {
+                let _ = key.set_value("IconUri", &exe.to_string_lossy().to_string());
+            }
+        }
+
+        // Also create/update Start Menu shortcut so Action Center displays "WaLite" with icon
+        if let (Ok(exe), Ok(appdata)) = (std::env::current_exe(), std::env::var("APPDATA")) {
+            let programs = std::path::PathBuf::from(appdata)
+                .join("Microsoft")
+                .join("Windows")
+                .join("Start Menu")
+                .join("Programs");
+            let lnk = programs.join("WaLite.lnk");
+            if !lnk.exists() {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                let ps = format!(
+                    "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{}');$s.TargetPath='{}';$s.Save()",
+                    lnk.display(),
+                    exe.display()
+                );
+                let _ = std::process::Command::new("powershell")
+                    .args(["-NoProfile", "-NonInteractive", "-Command", &ps])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+            }
+        }
+        // Auto-start with Windows (pure desktop app experience)
+        set_run_on_startup(true);
     }
 }
 
 fn main() {
     #[cfg(target_os = "windows")]
     {
+        ensure_webview_pdf_preferences();
         std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", BROWSER_ARGS);
         init_windows_app_identity();
     }
@@ -434,12 +1417,19 @@ fn main() {
     }
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![walite_action])
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        .plugin(tauri_plugin_notification::init())
+        .invoke_handler(tauri::generate_handler![walite_action, read_pdf_file])
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.unminimize();
                 let _ = window.set_focus();
+
+                for arg in argv {
+                    if let Some(code) = arg.strip_prefix("--eval=") {
+                        let _ = window.eval(code);
+                    }
+                }
             }
         }))
         .plugin(tauri_plugin_opener::init())
@@ -474,12 +1464,18 @@ fn main() {
                 .data_directory(data_dir)
                 .additional_browser_args(BROWSER_ARGS)
                 .disable_drag_drop_handler()
+                .initialization_script(include_str!("../pdf.worker.min.js"))
+                .initialization_script(include_str!("../pdf.min.js"))
                 .initialization_script(include_str!("../wa-privacy-panel.js"))
+                .initialization_script(include_str!("../wa-zapzap-features.js"))
                 .initialization_script(include_str!("../wa-download-manager.js"));
 
             #[cfg(target_os = "windows")]
             {
                 builder = builder.drag_and_drop(false);
+                builder = builder.user_agent(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+                );
             }
 
             #[cfg(target_os = "linux")]
@@ -527,7 +1523,15 @@ fn main() {
                         return false;
                     }
                     let url_str = url.as_str();
-                    if is_allowed_internal_url(&url) {
+                    let allowed = is_allowed_internal_url(&url);
+                    if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                        let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
+                        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
+                            use std::io::Write;
+                            let _ = writeln!(f, "[NAV] allowed={} url={}", allowed, url_str);
+                        }
+                    }
+                    if allowed {
                         true
                     } else {
                         if is_safe_external_scheme(url.scheme()) {
@@ -541,15 +1545,22 @@ fn main() {
             // New window handler (e.g. target="_blank", window.open)
             builder = builder.on_new_window(move |url, _features| {
                 let url_str = url.as_str();
+                let allowed = is_allowed_internal_url(&url);
+                if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                    let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
+                    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
+                        use std::io::Write;
+                        let _ = writeln!(f, "[NEW_WINDOW] allowed={} url={}", allowed, url_str);
+                    }
+                }
                 if url_str == "about:blank" || url_str.is_empty() {
                     return NewWindowResponse::Deny;
                 }
                 if url.scheme() == "blob" || url.scheme() == "data" {
                     return NewWindowResponse::Allow;
                 }
-                if is_allowed_internal_url(&url) {
-                    // Internal WhatsApp frames, Flows cache, and PDF viewer should NOT spawn external browser
-                    return NewWindowResponse::Deny;
+                if allowed {
+                    return NewWindowResponse::Allow;
                 }
                 if is_safe_external_scheme(url.scheme()) {
                     open_in_default_browser(url_str);
@@ -559,67 +1570,123 @@ fn main() {
 
             // Download handler: save to user's download folder
             let app_handle_dl = app_handle.clone();
-            builder = builder.on_download(move |_webview, event| {
+            builder = builder.on_download(move |webview, event| {
                 match event {
                     DownloadEvent::Requested { url, destination } => {
-                        if let Ok(dl_dir) = app_handle_dl.path().download_dir() {
-                            let file_name = destination
-                                .file_name()
-                                .and_then(|n| n.to_str())
-                                .filter(|s| !s.is_empty())
-                                .map(|s| s.to_string())
-                                .unwrap_or_else(|| {
-                                    url.path_segments()
-                                        .and_then(|mut s| s.next_back())
-                                        .filter(|s| !s.is_empty() && s.contains('.'))
-                                        .map(|s| s.to_string())
-                                        .unwrap_or_else(|| {
-                                            let now = std::time::SystemTime::now()
-                                                .duration_since(std::time::UNIX_EPOCH)
-                                                .unwrap_or_default()
-                                                .as_secs();
-                                            format!("walite_download_{}.bin", now)
-                                        })
-                                });
-                            *destination = get_unique_download_path(&dl_dir, &file_name);
+                        if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                            let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
+                            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
+                                use std::io::Write;
+                                let _ = writeln!(f, "[DOWNLOAD] url={} dest={}", url, destination.display());
+                            }
+                        }
+                        let dl_dir = app_handle_dl
+                            .path()
+                            .download_dir()
+                            .unwrap_or_else(|_| PathBuf::from("."));
+                        let file_name = destination
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| {
+                                url.path_segments()
+                                    .and_then(|mut s| s.next_back())
+                                    .filter(|s| !s.is_empty() && s.contains('.'))
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_else(|| {
+                                        let now = std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .unwrap_or_default()
+                                            .as_secs();
+                                        format!("walite_download_{}.bin", now)
+                                    })
+                            });
+
+                        let ask_save_as = ALWAYS_ASK_SAVE_AS.load(Ordering::SeqCst);
+
+                        #[cfg(target_os = "windows")]
+                        if ask_save_as {
+                            let hwnd = webview
+                                .window()
+                                .hwnd()
+                                .map(|h| h.0)
+                                .unwrap_or(std::ptr::null_mut());
+                            let initial_dir = {
+                                let last = LAST_SAVE_DIR.lock().unwrap();
+                                last.as_ref()
+                                    .filter(|p| p.is_dir())
+                                    .cloned()
+                                    .unwrap_or_else(|| dl_dir.clone())
+                            };
+
+                            if let Some(chosen_path) =
+                                show_windows_save_dialog(hwnd, &initial_dir, &file_name)
+                            {
+                                if let Some(parent) = chosen_path.parent() {
+                                    let mut last = LAST_SAVE_DIR.lock().unwrap();
+                                    *last = Some(parent.to_path_buf());
+                                }
+                                *LAST_CHOSEN_DOWNLOAD_PATH.lock().unwrap() = Some(chosen_path.clone());
+                                *destination = chosen_path;
+                                return true;
+                            } else {
+                                // User cancelled the Save As dialog
+                                return false;
+                            }
+                        }
+
+                        let fallback_path = get_unique_download_path(&dl_dir, &file_name);
+                        *LAST_CHOSEN_DOWNLOAD_PATH.lock().unwrap() = Some(fallback_path.clone());
+                        *destination = fallback_path;
+                        true
+                    }
+                    DownloadEvent::Finished { url: _, path, success } => {
+                        let chosen = LAST_CHOSEN_DOWNLOAD_PATH.lock().unwrap().take();
+                        let final_path = path.or(chosen);
+                        if success {
+                            if let Some(ref saved_path) = final_path {
+                                if saved_path.extension().map_or(false, |ext| ext.eq_ignore_ascii_case("pdf")) {
+                                    if let Ok(bytes) = std::fs::read(saved_path) {
+                                        const CHUNK_SIZE: usize = 200_000;
+                                        let _ = webview.eval("window.__walitePdfChunks = [];");
+                                        for chunk in bytes.chunks(CHUNK_SIZE) {
+                                            let b64 = base64_encode(chunk);
+                                            let _ = webview.eval(&format!("window.__walitePdfChunks.push('{}');", b64));
+                                        }
+                                        let fname = saved_path.file_name().and_then(|n| n.to_str()).unwrap_or("Dokumen.pdf");
+                                        let js = format!("window.waliteAssembleAndOpenPdf && window.waliteAssembleAndOpenPdf('{}');", escape_js_str(fname));
+                                        let _ = webview.eval(&js);
+                                    }
+                                }
+                            }
+                        }
+                        if success && SHOW_DOWNLOAD_NOTIF.load(Ordering::SeqCst) {
+                            if let Some(saved_path) = final_path {
+                                show_download_finished_toast(&app_handle_dl, &saved_path);
+                            }
                         }
                         true
                     }
-                    DownloadEvent::Finished { .. } => true,
                     _ => true,
                 }
             });
 
             let window = builder.build()?;
             let _ = window.show();
+            window.open_devtools();
 
-            // Build secondary toast window for interactive Quick-Reply notifications
-            let toast_url = WebviewUrl::App("toast.html".into());
-            let mut toast_builder = WebviewWindowBuilder::new(app, "toast", toast_url)
-                .title("WaLite Notification")
-                .inner_size(380.0, 135.0)
-                .resizable(false)
-                .decorations(false)
-                .transparent(true)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .visible(false);
-
-            #[cfg(target_os = "windows")]
-            {
-                toast_builder = toast_builder.drag_and_drop(false);
-            }
-
-            let toast_app_nav = app_handle.clone();
-            toast_builder = toast_builder.on_navigation(move |url| {
-                if url.scheme() == "walite-action" {
-                    handle_walite_action(&toast_app_nav, url);
-                    return false;
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                match event {
+                    WindowEvent::Focused(focused) => {
+                        if *focused && IS_PIP_MODE.load(Ordering::SeqCst) {
+                            restore_from_pip_mode(&window_clone);
+                        }
+                    }
+                    _ => {}
                 }
-                false
             });
-
-            let _toast_win = toast_builder.build()?;
 
             #[cfg(target_os = "linux")]
             {
@@ -735,8 +1802,11 @@ fn main() {
 
             // System tray setup
             let open_item = MenuItem::with_id(app, "open", "Buka WaLite", true, None::<&str>)?;
+            let settings_item = MenuItem::with_id(app, "settings", "Pengaturan (Ctrl+P)", true, None::<&str>)?;
+            let devtools_item = MenuItem::with_id(app, "devtools", "Inspect / DevTools (F12)", true, None::<&str>)?;
+            let test_item = MenuItem::with_id(app, "test_notif", "🔔 Uji Coba Notifikasi", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
-            let tray_menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+            let tray_menu = Menu::with_items(app, &[&open_item, &settings_item, &devtools_item, &test_item, &quit_item])?;
 
             let mut tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
@@ -748,6 +1818,27 @@ fn main() {
                             let _ = window.unminimize();
                             let _ = window.set_focus();
                         }
+                    }
+                    "devtools" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            window.open_devtools();
+                        }
+                    }
+                    "settings" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                            let _ = window.eval("if(typeof window.waliteOpenSettings==='function') window.waliteOpenSettings();");
+                        }
+                    }
+                    "test_notif" => {
+                        show_native_message_notification(
+                            app,
+                            "Budi Santoso",
+                            "Halo! Ketik teks balasan di kolom bawah lalu klik Kirim.",
+                            "test-notif"
+                        );
                     }
                     "quit" => {
                         app.exit(0);
