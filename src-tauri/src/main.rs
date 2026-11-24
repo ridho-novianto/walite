@@ -19,9 +19,13 @@ static IS_CALL_ACTIVE: AtomicBool = AtomicBool::new(false);
 static IS_PIP_MODE: AtomicBool = AtomicBool::new(false);
 static SAVED_NORMAL_SIZE: Mutex<Option<(f64, f64)>> = Mutex::new(None);
 static SAVED_NORMAL_POS: Mutex<Option<(i32, i32)>> = Mutex::new(None);
+static IS_QUITTING: AtomicBool = AtomicBool::new(false);
 
 const TARGET_URL: &str = "https://web.whatsapp.com";
 const BROWSER_ARGS: &str = "--disable-features=Translate,HideCursorWhileTyping,msSmartScreenProtection \
+    --enable-features=NetworkServiceInProcess \
+    --renderer-process-limit=1 \
+    --disk-cache-size=125829120 \
     --no-first-run \
     --disable-background-timer-throttling \
     --disable-renderer-backgrounding \
@@ -271,10 +275,10 @@ fn show_native_message_notification(
         let title_str = title.to_string();
         let tag_str = tag.to_string();
 
-        let is_call = body.to_lowercase().contains("telepon")
-            || body.to_lowercase().contains("panggilan")
-            || body.to_lowercase().contains("call")
-            || tag.to_lowercase().contains("call");
+        let tag_lower = tag.to_lowercase();
+        let is_call = tag_lower.contains("call")
+            || tag_lower.contains("telepon")
+            || tag_lower.contains("voip");
 
         let mut toast = Toast::new();
         toast
@@ -480,24 +484,70 @@ fn get_persistent_data_dir() -> PathBuf {
         if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
             PathBuf::from(local_app_data)
                 .join("id.my.vianto06.walite")
-                .join("EBWebView")
+                .join("data")
         } else {
-            std::env::temp_dir()
-                .join("id.my.vianto06.walite")
-                .join("EBWebView")
+            panic!("FATAL: Variabel lingkungan LOCALAPPDATA tidak ditemukan. Inisialisasi dibatalkan demi melindungi data sesi.");
         }
     }
     #[cfg(not(target_os = "windows"))]
     {
         if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
-            PathBuf::from(xdg).join("id.my.vianto06.walite")
+            PathBuf::from(xdg).join("id.my.vianto06.walite").join("data")
         } else if let Ok(home) = std::env::var("HOME") {
             PathBuf::from(home)
                 .join(".local")
                 .join("share")
                 .join("id.my.vianto06.walite")
+                .join("data")
         } else {
-            std::env::temp_dir().join("id.my.vianto06.walite")
+            panic!("FATAL: Variabel lingkungan XDG_DATA_HOME / HOME tidak ditemukan.");
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let dest_child = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_all(&entry.path(), &dest_child)?;
+        } else {
+            let _ = std::fs::copy(entry.path(), dest_child);
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn migrate_session_data_if_needed(target_dir: &std::path::Path) {
+    let target_eb = target_dir.join("EBWebView");
+    let target_indexeddb = target_eb.join("Default").join("IndexedDB");
+
+    if !target_indexeddb.exists() {
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let base = PathBuf::from(local_app_data).join("id.my.vianto06.walite");
+            let candidate1 = base.join("EBWebView").join("EBWebView");
+            let candidate2 = base.join("EBWebView");
+
+            let source = if candidate1.join("Default").join("IndexedDB").exists() {
+                Some(candidate1)
+            } else if candidate2.join("Default").join("IndexedDB").exists() {
+                Some(candidate2)
+            } else {
+                None
+            };
+
+            if let Some(src_path) = source {
+                println!("[WaLite] Menjalankan migrasi satu kali sesi dari {:?} ke {:?}...", src_path, target_eb);
+                if let Err(e) = copy_dir_all(&src_path, &target_eb) {
+                    eprintln!("[WaLite] Gagal migrasi data sesi: {:?}", e);
+                } else {
+                    println!("[WaLite] Migrasi data sesi berhasil. Folder lama tetap dipertahankan sebagai cadangan.");
+                }
+            }
         }
     }
 }
@@ -852,8 +902,8 @@ fn open_or_create_account2(app: &tauri::AppHandle) {
 
     let data_dir = get_persistent_data_dir()
         .parent()
-        .map(|p| p.join("EBWebView_Account2"))
-        .unwrap_or_else(|| get_persistent_data_dir().join("Account2"));
+        .map(|p| p.join("data_account2"))
+        .unwrap_or_else(|| get_persistent_data_dir().join("account2"));
     let _ = std::fs::create_dir_all(&data_dir);
 
     let main_url = TARGET_URL.parse().expect("valid target url");
@@ -873,9 +923,7 @@ fn open_or_create_account2(app: &tauri::AppHandle) {
     #[cfg(target_os = "windows")]
     {
         builder = builder.drag_and_drop(false);
-        builder = builder.user_agent(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-        );
+        // Do NOT hardcode Chrome/133. Use dynamic native WebView2 User-Agent.
     }
 
     #[cfg(target_os = "linux")]
@@ -1063,6 +1111,14 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                 let _ = main_win.eval(js);
             }
         }
+        "quit" => {
+            IS_QUITTING.store(true, Ordering::SeqCst);
+            for (_, window) in app.webview_windows() {
+                let _ = window.hide();
+                let _ = window.close();
+            }
+            app.exit(0);
+        }
         "open-devtools" => {
             if let Some(main_win) = app.get_webview_window("main") {
                 main_win.open_devtools();
@@ -1157,11 +1213,11 @@ fn read_pdf_file(path: String) -> Result<Vec<u8>, String> {
 #[cfg(target_os = "windows")]
 fn ensure_webview_pdf_preferences() {
     let base_dirs = vec![
-        get_persistent_data_dir(),
+        get_persistent_data_dir().join("EBWebView"),
         get_persistent_data_dir()
             .parent()
-            .map(|p| p.join("EBWebView_Account2"))
-            .unwrap_or_else(|| get_persistent_data_dir().join("Account2")),
+            .map(|p| p.join("data_account2").join("EBWebView"))
+            .unwrap_or_else(|| get_persistent_data_dir().join("account2").join("EBWebView")),
     ];
 
     for base_dir in base_dirs {
@@ -1452,6 +1508,8 @@ fn main() {
         })
         .setup(|app| {
             let data_dir = get_persistent_data_dir();
+            #[cfg(target_os = "windows")]
+            migrate_session_data_if_needed(&data_dir);
             let _ = std::fs::create_dir_all(&data_dir);
 
             let main_url = TARGET_URL.parse().expect("valid target url");
@@ -1473,9 +1531,7 @@ fn main() {
             #[cfg(target_os = "windows")]
             {
                 builder = builder.drag_and_drop(false);
-                builder = builder.user_agent(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-                );
+                // Do NOT hardcode Chrome/133. Use dynamic native WebView2 User-Agent.
             }
 
             #[cfg(target_os = "linux")]
@@ -1674,6 +1730,7 @@ fn main() {
 
             let window = builder.build()?;
             let _ = window.show();
+            #[cfg(debug_assertions)]
             window.open_devtools();
 
             let window_clone = window.clone();
@@ -1841,6 +1898,11 @@ fn main() {
                         );
                     }
                     "quit" => {
+                        IS_QUITTING.store(true, Ordering::SeqCst);
+                        for (_, window) in app.webview_windows() {
+                            let _ = window.hide();
+                            let _ = window.close();
+                        }
                         app.exit(0);
                     }
                     _ => {}
@@ -1871,8 +1933,10 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                if !IS_QUITTING.load(Ordering::SeqCst) {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
             }
         })
         .run(tauri::generate_context!())

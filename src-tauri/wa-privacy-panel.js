@@ -76,10 +76,10 @@
 #pane-side :is(div[role="row"], [role="listitem"]) { cursor: pointer; }
 
 /* 1. Contact & Group Names (blurNames) */
-html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid="cell-frame-title"], span[title]._ak8q, span[title]._ak8j, header span[dir="auto"]) { filter: blur(8px) !important; transition: filter .15s ease; }
-html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]):hover :is([data-testid="cell-frame-title"], span[title], header span[dir="auto"]) { filter: none !important; }
-html.wl-overall-active.wl-blur-names #main header :is(span[title], [dir="auto"]) { filter: blur(8px) !important; transition: filter .15s ease; }
-html.wl-overall-active.wl-blur-names #main header:hover :is(span[title], [dir="auto"]) { filter: none !important; }
+html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid="cell-frame-title"], [data-testid="cell-frame-title"] *, span[title][dir="auto"], header span[dir="auto"], span[title]._ak8q, span[title]._ak8j) { filter: blur(8px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]):hover :is([data-testid="cell-frame-title"], [data-testid="cell-frame-title"] *, span[title], header span[dir="auto"]) { filter: none !important; }
+html.wl-overall-active.wl-blur-names #main header :is(span[title], [dir="auto"], [data-testid="conversation-info-header-chat-title"]) { filter: blur(8px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-names #main header:hover :is(span[title], [dir="auto"], [data-testid="conversation-info-header-chat-title"]) { filter: none !important; }
 
 /* 2. Profile Pictures (blurAvatars) */
 html.wl-overall-active.wl-blur-avatars #pane-side :is(div[role="row"], [role="listitem"]) :is(
@@ -180,8 +180,8 @@ html.wl-overall-active.wl-blur-avatars #main div[role="row"]:hover :is(
 ):not([data-testid*="msg-container"] *):not([data-icon*="check"] *):not([data-icon*="status"] *):not([data-icon*="audio"] *):not([data-icon*="mic"] *) { filter: none !important; }
 
 /* 3. Last Messages Preview in Pane-side (blurLastMsg) */
-html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid*="last-msg"], ._ak8k, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *)) { filter: blur(6px) !important; transition: filter .15s ease; }
-html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]):hover :is([data-testid*="last-msg"], ._ak8k, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *)) { filter: none !important; }
+html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid*="last-msg"], [data-testid*="last-msg"] *, [data-testid="cell-frame-secondary"], [data-testid="cell-frame-secondary"] *, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *), ._ak8k) { filter: blur(6px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]):hover :is([data-testid*="last-msg"], [data-testid*="last-msg"] *, [data-testid="cell-frame-secondary"], [data-testid="cell-frame-secondary"] *, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *), ._ak8k) { filter: none !important; }
 
 /* 4. All Messages in Active Chat Room (blurMessages) */
 html.wl-overall-active.wl-blur-messages #main :is(.message-in, .message-out, div[data-testid*="msg-container"]) { filter: blur(8px) !important; transition: filter .15s ease; }
