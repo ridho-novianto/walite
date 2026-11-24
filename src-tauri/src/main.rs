@@ -23,7 +23,6 @@ static IS_QUITTING: AtomicBool = AtomicBool::new(false);
 
 const TARGET_URL: &str = "https://web.whatsapp.com";
 const BROWSER_ARGS: &str = "--disable-features=Translate,HideCursorWhileTyping,msSmartScreenProtection \
-    --enable-features=NetworkServiceInProcess \
     --renderer-process-limit=1 \
     --disk-cache-size=125829120 \
     --no-first-run \
@@ -279,6 +278,13 @@ fn show_native_message_notification(
         let is_call = tag_lower.contains("call")
             || tag_lower.contains("telepon")
             || tag_lower.contains("voip");
+
+        if let Some(main_win) = app.get_webview_window("main") {
+            #[cfg(target_os = "windows")]
+            if !main_win.is_focused().unwrap_or(true) {
+                flash_window(&main_win);
+            }
+        }
 
         let mut toast = Toast::new();
         toast
@@ -737,6 +743,108 @@ fn get_unique_download_path(dir: &std::path::Path, file_name: &str) -> PathBuf {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
+struct WindowState {
+    x: i32,
+    y: i32,
+    width: f64,
+    height: f64,
+    is_maximized: bool,
+}
+
+fn get_window_state_path() -> PathBuf {
+    get_persistent_data_dir()
+        .parent()
+        .map(|p| p.join("window_state.json"))
+        .unwrap_or_else(|| get_persistent_data_dir().join("window_state.json"))
+}
+
+fn save_window_state(window: &tauri::WebviewWindow) {
+    if IS_PIP_MODE.load(Ordering::SeqCst) {
+        return;
+    }
+    if let (Ok(pos), Ok(size), Ok(maximized)) = (window.outer_position(), window.inner_size(), window.is_maximized()) {
+        if !maximized && size.width >= 680 && size.height >= 500 && pos.x > -10000 && pos.y > -10000 {
+            let state = WindowState {
+                x: pos.x,
+                y: pos.y,
+                width: size.width as f64,
+                height: size.height as f64,
+                is_maximized: maximized,
+            };
+            if let Ok(json) = serde_json::to_string(&state) {
+                let _ = std::fs::write(get_window_state_path(), json);
+            }
+        }
+    }
+}
+
+fn load_window_state() -> Option<WindowState> {
+    let path = get_window_state_path();
+    if path.exists() {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            if let Ok(state) = serde_json::from_str::<WindowState>(&content) {
+                return Some(state);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn enable_dark_title_bar(hwnd: *mut std::ffi::c_void) {
+    #[link(name = "dwmapi")]
+    extern "system" {
+        fn DwmSetWindowAttribute(
+            hwnd: *mut std::ffi::c_void,
+            dwAttribute: u32,
+            pvAttribute: *const std::ffi::c_void,
+            cbAttribute: u32,
+        ) -> i32;
+    }
+    const DWMWA_USE_IMMERSIVE_DARK_MODE: u32 = 20;
+    let dark_mode: i32 = 1;
+    unsafe {
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_USE_IMMERSIVE_DARK_MODE,
+            &dark_mode as *const _ as *const _,
+            std::mem::size_of::<i32>() as u32,
+        );
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn flash_window(window: &tauri::WebviewWindow) {
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            #[repr(C)]
+            #[allow(non_snake_case)]
+            struct FLASHWINFO {
+                cbSize: u32,
+                hwnd: *mut std::ffi::c_void,
+                dwFlags: u32,
+                uCount: u32,
+                dwTimeout: u32,
+            }
+            #[link(name = "user32")]
+            extern "system" {
+                fn FlashWindowEx(pfwi: *const FLASHWINFO) -> i32;
+            }
+            const FLASHW_ALL: u32 = 0x00000003;
+            const FLASHW_TIMERNOFG: u32 = 0x0000000C;
+            let fwi = FLASHWINFO {
+                cbSize: std::mem::size_of::<FLASHWINFO>() as u32,
+                hwnd: hwnd.0,
+                dwFlags: FLASHW_ALL | FLASHW_TIMERNOFG,
+                uCount: 4,
+                dwTimeout: 0,
+            };
+            let _ = FlashWindowEx(&fwi);
+        }
+    }
+}
+
 fn create_badge_icon(count: i64) -> Vec<u8> {
     const W: usize = 32;
     const H: usize = 32;
@@ -1070,6 +1178,10 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                         let rgba = create_badge_icon(count);
                         let img = tauri::image::Image::new_owned(rgba, 32, 32);
                         let _ = main_win.set_overlay_icon(Some(img));
+                        #[cfg(target_os = "windows")]
+                        if !main_win.is_focused().unwrap_or(true) {
+                            flash_window(&main_win);
+                        }
                     } else {
                         let _ = main_win.set_title("WaLite");
                         let _ = main_win.set_overlay_icon(None);
@@ -1313,7 +1425,7 @@ fn init_windows_app_identity() {
             }
         }
 
-        // Also create/update Start Menu shortcut so Action Center displays "WaLite" with icon
+        // Also create/update Start Menu shortcuts so Action Center displays "WaLite" with icon
         if let (Ok(exe), Ok(appdata)) = (std::env::current_exe(), std::env::var("APPDATA")) {
             let programs = std::path::PathBuf::from(appdata)
                 .join("Microsoft")
@@ -1321,13 +1433,17 @@ fn init_windows_app_identity() {
                 .join("Start Menu")
                 .join("Programs");
             let lnk = programs.join("WaLite.lnk");
-            if !lnk.exists() {
+            let lnk_task = programs.join("WaLite - Obrolan Baru.lnk");
+            if !lnk.exists() || !lnk_task.exists() {
                 use std::os::windows::process::CommandExt;
                 const CREATE_NO_WINDOW: u32 = 0x08000000;
                 let ps = format!(
-                    "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{}');$s.TargetPath='{}';$s.Save()",
+                    "$w = New-Object -ComObject WScript.Shell; \
+                     if (-not (Test-Path '{0}')) {{ $s = $w.CreateShortcut('{0}'); $s.TargetPath = '{1}'; $s.Save(); }} \
+                     if (-not (Test-Path '{2}')) {{ $t = $w.CreateShortcut('{2}'); $t.TargetPath = '{1}'; $t.Arguments = '--eval=if(window.waliteOpenDirectChat)window.waliteOpenDirectChat();'; $t.Description = 'Buka Obrolan WhatsApp Baru'; $t.Save(); }}",
                     lnk.display(),
-                    exe.display()
+                    exe.display(),
+                    lnk_task.display()
                 );
                 let _ = std::process::Command::new("powershell")
                     .args(["-NoProfile", "-NonInteractive", "-Command", &ps])
@@ -1335,8 +1451,16 @@ fn init_windows_app_identity() {
                     .status();
             }
         }
-        // Auto-start with Windows (pure desktop app experience)
-        set_run_on_startup(true);
+        // Deep link whatsapp: JANGAN mendaftarkan atau menimpa handler protokol yang sudah ada
+        // (WhatsApp Desktop terpasang di komputer ini) tanpa pengaturan opt-in. Default: tidak didaftarkan.
+        // Hapus kunci override di HKCU jika ada sisa dari build lama agar WhatsApp Desktop tetap menjadi default.
+        {
+            use winreg::enums::HKEY_CURRENT_USER;
+            use winreg::RegKey;
+            let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+            let _ = hkcu.delete_subkey_all(r"Software\Classes\whatsapp");
+        }
+        // Auto-start with Windows is optional and OFF by default. Controlled exclusively via user settings.
     }
 }
 
@@ -1481,6 +1605,22 @@ fn main() {
                 let _ = window.unminimize();
                 let _ = window.set_focus();
 
+                #[cfg(target_os = "windows")]
+                if let Ok(hwnd) = window.hwnd() {
+                    unsafe {
+                        #[link(name = "user32")]
+                        extern "system" {
+                            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+                            fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+                            fn BringWindowToTop(hWnd: *mut std::ffi::c_void) -> i32;
+                        }
+                        const SW_RESTORE: i32 = 9;
+                        ShowWindow(hwnd.0, SW_RESTORE);
+                        BringWindowToTop(hwnd.0);
+                        SetForegroundWindow(hwnd.0);
+                    }
+                }
+
                 for arg in argv {
                     if let Some(code) = arg.strip_prefix("--eval=") {
                         let _ = window.eval(code);
@@ -1515,9 +1655,13 @@ fn main() {
             let main_url = TARGET_URL.parse().expect("valid target url");
             let app_handle = app.handle().clone();
 
+            let saved_state = load_window_state();
+            let init_w = saved_state.as_ref().map(|s| s.width).unwrap_or(1024.0);
+            let init_h = saved_state.as_ref().map(|s| s.height).unwrap_or(768.0);
+
             let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(main_url))
                 .title("WaLite")
-                .inner_size(1024.0, 768.0)
+                .inner_size(init_w, init_h)
                 .min_inner_size(680.0, 500.0)
                 .data_directory(data_dir)
                 .additional_browser_args(BROWSER_ARGS)
@@ -1733,6 +1877,18 @@ fn main() {
             #[cfg(debug_assertions)]
             window.open_devtools();
 
+            #[cfg(target_os = "windows")]
+            if let Ok(hwnd) = window.hwnd() {
+                enable_dark_title_bar(hwnd.0);
+            }
+
+            if let Some(ref st) = saved_state {
+                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: st.x, y: st.y }));
+                if st.is_maximized {
+                    let _ = window.maximize();
+                }
+            }
+
             let window_clone = window.clone();
             window.on_window_event(move |event| {
                 match event {
@@ -1740,6 +1896,9 @@ fn main() {
                         if *focused && IS_PIP_MODE.load(Ordering::SeqCst) {
                             restore_from_pip_mode(&window_clone);
                         }
+                    }
+                    WindowEvent::Moved(_) | WindowEvent::Resized(_) => {
+                        save_window_state(&window_clone);
                     }
                     _ => {}
                 }
@@ -1859,11 +2018,12 @@ fn main() {
 
             // System tray setup
             let open_item = MenuItem::with_id(app, "open", "Buka WaLite", true, None::<&str>)?;
+            let new_chat_item = MenuItem::with_id(app, "new_chat", "Obrolan Baru (Ctrl+M)", true, None::<&str>)?;
             let settings_item = MenuItem::with_id(app, "settings", "Pengaturan (Ctrl+P)", true, None::<&str>)?;
             let devtools_item = MenuItem::with_id(app, "devtools", "Inspect / DevTools (F12)", true, None::<&str>)?;
             let test_item = MenuItem::with_id(app, "test_notif", "🔔 Uji Coba Notifikasi", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
-            let tray_menu = Menu::with_items(app, &[&open_item, &settings_item, &devtools_item, &test_item, &quit_item])?;
+            let tray_menu = Menu::with_items(app, &[&open_item, &new_chat_item, &settings_item, &devtools_item, &test_item, &quit_item])?;
 
             let mut tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
@@ -1874,6 +2034,14 @@ fn main() {
                             let _ = window.show();
                             let _ = window.unminimize();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "new_chat" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                            let _ = window.eval("if(typeof window.waliteOpenDirectChat==='function') window.waliteOpenDirectChat();");
                         }
                     }
                     "devtools" => {

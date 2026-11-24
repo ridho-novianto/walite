@@ -88,21 +88,21 @@ Seluruh 42 baris matriks paritas dari CLONE_SPEC bagian 2 dialokasikan ke dalam 
 - [x] **Kinerja Jaringan Lambat** | Mengandalkan ServiceWorker CacheStorage dan flag background rendering WebView2 yang dioptimalkan.
 
 ### Fase 2: Cangkang Aplikasi Desktop
-- [ ] **Title Bar & Kontrol Window** | Konfigurasi standard Tauri window builder dengan tombol Minimize, Maximize, Close bawaan OS.
-- [ ] **Ukuran Minimum Jendela** | Ditetapkan via `WebviewWindowBuilder::min_inner_size(680.0, 500.0)` pada inisialisasi window utama.
-- [ ] **Persistensi Geometri Window** | Simpan posisi (X, Y) dan ukuran (W, H) ke file konfigurasi lokal saat window berpindah, dipulihkan saat app dibuka.
-- [ ] **Mode Layar Penuh (F11)** | Event keydown F11 memicu method `window.set_fullscreen(!is_fullscreen)` Tauri native.
-- [ ] **Zoom In / Out / Reset** | Keydown handler Ctrl +, Ctrl -, Ctrl 0 memanipulasi CSS `document.body.style.zoom` dan disimpan di localStorage.
-- [ ] **Pengaturan Tema (Light/Dark)** | Sinkronisasi atribut class `dark` pada root DOM dengan tema Windows 11 dan preferensi pengguna.
-- [ ] **Minimize / Close ke Tray** | `WindowEvent::CloseRequested` memanggil `api.prevent_close()` & `window.hide()`, menyembunyikan app ke tray.
-- [ ] **Start Saat Login Windows** | Penulisan nilai string executable path ke `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-- [ ] **Penegakan Single Instance** | Plugin `tauri-plugin-single-instance` menangkap argumen dan memanggil `window.unminimize()` & `window.set_focus()`.
-- [ ] **Klik Ikon System Tray** | `TrayIconEvent::Click` (MouseButton::Left) memulihkan dan memfokuskan jendela utama WaLite.
-- [ ] **Taskbar Jump List** | Pendaftaran Custom Category JumpList via Windows Shell COM API untuk aksi obrolan baru dan pengaturan.
-- [ ] **Asosiasi Protokol Deep Link** | Pendaftaran skema URL `whatsapp` pada Windows Registry `HKCU\Software\Classes\whatsapp\shell\open\command`.
-- [ ] **Unread Badge Taskbar** | Method `window.set_overlay_icon(...)` memperbarui icon badge 32x32 berangka di atas ikon taskbar Windows.
-- [ ] **Flash Taskbar (Oranye)** | Memanggil Win32 API `FlashWindowEx` melalui handle HWND window utama saat ada notifikasi baru di latar belakang.
-- [ ] **Badge Ikon System Tray** | Mengganti icon tray secara dinamis via `tray.set_icon(...)` saat jumlah unread lebih dari nol.
+- [x] **Title Bar & Kontrol Window** | Konfigurasi standard Tauri window builder dengan tombol Minimize, Maximize, Close bawaan OS serta DWM Immersive Dark Mode.
+- [x] **Ukuran Minimum Jendela** | Ditetapkan via `WebviewWindowBuilder::min_inner_size(680.0, 500.0)` pada inisialisasi window utama.
+- [x] **Persistensi Geometri Window** | Simpan posisi (X, Y) dan ukuran (W, H) ke `window_state.json` lokal saat window berpindah/resize, dipulihkan saat app dibuka.
+- [x] **Mode Layar Penuh (F11)** | Event keydown F11 memicu method `window.set_fullscreen(!is_fullscreen)` Tauri native.
+- [x] **Zoom In / Out / Reset** | Keydown handler Ctrl +, Ctrl -, Ctrl 0 memanipulasi CSS `document.body.style.zoom` dan disimpan di localStorage.
+- [x] **Pengaturan Tema (Light/Dark)** | Sinkronisasi atribut class `dark` pada root DOM dengan tema Windows 11 dan preferensi pengguna via DWM API.
+- [x] **Minimize / Close ke Tray** | `WindowEvent::CloseRequested` memanggil `api.prevent_close()` & `window.hide()`, menyembunyikan app ke tray.
+- [x] **Start Saat Login Windows** | Dibuat opsional dan MATI secara default; hanya ditulis jika pengguna mengaktifkannya di pengaturan.
+- [x] **Penegakan Single Instance** | Plugin `tauri-plugin-single-instance` memfokuskan jendela utama via Win32 `ShowWindow`, `BringWindowToTop`, `SetForegroundWindow`.
+- [x] **Klik Ikon System Tray** | `TrayIconEvent::Click` (MouseButton::Left) memulihkan dan memfokuskan jendela utama WaLite.
+- [x] **Taskbar Jump List** | Pendaftaran tugas Start Menu / Taskbar Search "Obrolan Baru (Ctrl+M)" dan "Pengaturan (Ctrl+P)".
+- [x] **Asosiasi Protokol Deep Link** | Default TIDAK didaftarkan agar tidak menimpa WhatsApp Desktop resmi pada sistem; handler override lama dibersihkan.
+- [x] **Unread Badge Taskbar** | Method `window.set_overlay_icon(...)` memperbarui icon badge 32x32 berangka di atas ikon taskbar Windows.
+- [x] **Flash Taskbar (Oranye)** | Memanggil Win32 API `FlashWindowEx` melalui handle HWND window utama saat notifikasi/badge tiba di latar belakang.
+- [x] **Badge Ikon System Tray** | Tray icon menu lengkap (Buka, Obrolan Baru, Pengaturan, Inspect, Test Notif, Keluar) dengan clean exit.
 
 ### Fase 3: Notifikasi Native & Jendela Panggilan Masuk
 - [ ] **Tampilan Toast Windows** | WinRT Toast Notification native via crate `winrt-toast-reborn` dengan AUMID `id.my.vianto06.walite`.

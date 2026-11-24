@@ -166,9 +166,12 @@ if (Test-Path $waLocalState) {
 }
 
 # B. Walite (TARGET B) Storage
-$waliteDataDir = "$env:LOCALAPPDATA\id.my.vianto06.walite\EBWebView"
+$waliteDataDir = "$env:LOCALAPPDATA\id.my.vianto06.walite\data"
+if (-not (Test-Path $waliteDataDir)) {
+    $waliteDataDir = "$env:LOCALAPPDATA\id.my.vianto06.walite\EBWebView"
+}
 if (Test-Path $waliteDataDir) {
-    Write-Host "[TARGET B] Walite EBWebView Storage:"
+    Write-Host "[TARGET B] Walite Storage ($waliteDataDir):"
     $idb = "$waliteDataDir\EBWebView\Default\IndexedDB"
     if (Test-Path $idb) {
         Write-Host "  IndexedDB:"

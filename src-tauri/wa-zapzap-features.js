@@ -1543,7 +1543,7 @@
 
           <div style="background:#202c33; border:1px solid #2a3942; border-radius:10px; padding:14px 18px;">
             <div style="font-size:12px; font-weight:700; color:#00a884; text-transform:uppercase; margin-bottom:6px;">Sistem & Pengunduhan Berkas</div>
-            ${createSettingRow('Jalankan Saat Windows Menyala', 'Buka WaLite otomatis di latar belakang saat komputer dinyalakan', createSwitchHtml('sw-autoStart', state.autoStart !== false))}
+            ${createSettingRow('Jalankan Saat Windows Menyala', 'Buka WaLite otomatis di latar belakang saat komputer dinyalakan', createSwitchHtml('sw-autoStart', state.autoStart === true))}
             ${createSettingRow('Tanya Lokasi Simpan (Save As)', 'Tampilkan dialog pemilihan folder sebelum berkas disimpan', createSwitchHtml('sw-saveAs', state.saveAs !== false))}
             ${createSettingRow('Notifikasi Selesai Unduh', 'Beri tahu melalui notifikasi saat berkas selesai diunduh', createSwitchHtml('sw-dlNotif', state.downloadNotif !== false))}
           </div>

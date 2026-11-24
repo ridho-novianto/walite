@@ -28,7 +28,7 @@
     version: 2, overall: false, blurNames: true, blurAvatars: true, blurLastMsg: true,
     blurMessages: true, blurMedia: true, blurInput: false, autoLock: false, autoLockMinutes: 10,
     showShieldBtn: true, hasPassword: false, passwordHash: null, passwordSalt: null,
-    saveAs: true, downloadNotif: true, customCSS: '', customJS: '', customCSSEnabled: false, customJSEnabled: false,
+    saveAs: true, downloadNotif: true, autoStart: false, customCSS: '', customJS: '', customCSSEnabled: false, customJSEnabled: false,
     notifShowName: true, notifShowPreview: true, notifShowPhoto: true, notifSound: true, respectDnd: true
   };
 
@@ -974,7 +974,7 @@ input:checked+.wl-slider:before{transform:translateX(18px);}
         if (typeof window.dispatchWaliteAction === 'function') {
           window.dispatchWaliteAction('set-setting', { key: 'saveAs', val: String(state.saveAs !== false) });
           window.dispatchWaliteAction('set-setting', { key: 'downloadNotif', val: String(state.downloadNotif !== false) });
-          window.dispatchWaliteAction('set-setting', { key: 'autoStart', val: String(state.autoStart !== false) });
+          window.dispatchWaliteAction('set-setting', { key: 'autoStart', val: String(state.autoStart === true) });
         }
       } catch (_) {}
     }, 500);
