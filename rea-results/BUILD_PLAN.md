@@ -105,26 +105,26 @@ Seluruh 42 baris matriks paritas dari CLONE_SPEC bagian 2 dialokasikan ke dalam 
 - [x] **Badge Ikon System Tray** | Tray icon menu lengkap (Buka, Obrolan Baru, Pengaturan, Inspect, Test Notif, Keluar) dengan clean exit.
 
 ### Fase 3: Notifikasi Native & Jendela Panggilan Masuk
-- [ ] **Tampilan Toast Windows** | WinRT Toast Notification native via crate `winrt-toast-reborn` dengan AUMID `id.my.vianto06.walite`.
-- [ ] **Pratinjau Pengirim & Teks** | Ekstraksi nama pengirim dan cuplikan teks dari Notification API diteruskan lokal ke payload WinRT XML Toast.
-- [ ] **Balas Cepat (Inline Quick Reply)** | Elemen WinRT Toast `<input id="replyBox" type="text" />` + aksi kirim meneruskan balasan ke `__walite_send_inline_reply`.
-- [ ] **Klik Buka Obrolan Tepat** | Klik tubuh notifikasi memulihkan window dan mengeksekusi helper DOM `__walite_open_chat(cleanTitle, cleanTag)`.
-- [ ] **Foto Profil / Avatar di Toast** | Avatar kontak disimpan ke direktori temporary lokal dan disematkan ke berkas XML Toast via jalur `file:///`.
-- [ ] **Pengaturan Suara & Pratinjau** | Redaksi teks nama/preview dan pembungkaman suara dikelola via preferensi lokal sebelum toast dikirim.
-- [ ] **Dukungan Focus Assist / DND** | Dikelola secara otomatis dan native oleh Windows Action Center Notification Manager.
-- [ ] **Supresi Notifikasi Chat Aktif** | Pengecekan kesamaan nama pengirim dengan judul chat di `#main header`; batalkan toast jika chat sedang aktif di layar.
-- [ ] **Notifikasi Unduhan Selesai** | WinRT Toast dengan tombol aksi "Buka Berkas" (`ShellExecuteW open`) dan "Buka Folder" (`explorer.exe /select`).
-- [ ] **Popup Panggilan Masuk (Always-on-Top)** | Jendela sekunder Tauri `call_popup` berukuran 320x160 px, frameless, melayang always-on-top di pojok kanan bawah.
-- [ ] **Tombol Aksi Panggilan Masuk** | Tombol "Terima" dan "Tolak" pada popup meneruskan IPC ke `__walite_accept_call()` / `__walite_decline_call()` di WebView2.
-- [ ] **Suara Dering Panggilan Masuk** | Dijalankan native oleh Web Audio API WhatsApp Web di dalam WebView2 tanpa batasan gesture.
-- [ ] **Panggilan Saat App di Tray/Minimize** | Deteksi sinyal panggilan (tag notifikasi & perubahan title/favicon) otomatis memicu `call_popup.show()`.
-- [ ] **Panggilan Suara vs Video** | Penanganan izin `PermissionKind::Microphone` dan `Camera` diizinkan permanen di `on_permission_request`.
-- [ ] **Panggilan Grup** | Didukung penuh di dalam WebView2 dengan flag ABProp `enable_web_group_calling: true` yang terverifikasi aktif.
-- [ ] **Jendela Panggilan Aktif (PiP)** | Transisi otomatis ke window compact always-on-top saat window utama diminimize saat panggilan berlangsung.
-- [ ] **Berbagi Layar (Screen Sharing)** | Izin capture layar desktop/jendela diberikan otomatis via Chromium display media API di WebView2.
-- [ ] **Panggilan Tak Terjawab (Missed Call)** | Toast notifikasi skenario `missed-call` di Windows Action Center dengan tombol panggil balik.
-- [ ] **Izin Perangkat Mikrofon & Kamera** | Handler `on_permission_request` Tauri merespons `PermissionResponse::Allow` dan diingat di profil WebView2.
-- [ ] **Pemilihan Perangkat Audio** | Dikelola native oleh Chromium MediaDevices API di menu pengaturan panggilan bawaan WhatsApp Web.
+- [x] **Tampilan Toast Windows** | WinRT Toast Notification native via crate `winrt-toast-reborn` dengan AUMID `id.my.vianto06.walite` (Teruji).
+- [x] **Pratinjau Pengirim & Teks** | Ekstraksi nama pengirim dan cuplikan teks dari Notification API diteruskan lokal ke payload WinRT XML Toast (Teruji).
+- [x] **Balas Cepat (Inline Quick Reply)** | Elemen WinRT Toast `<input id="replyBox" type="text" />` mati secara default; fallback otomatis buka obrolan (Teruji).
+- [x] **Klik Buka Obrolan Tepat** | Klik tubuh notifikasi memulihkan window dan mengeksekusi helper DOM `__walite_open_chat(cleanTitle, cleanTag)` (Teruji).
+- [x] **Foto Profil / Avatar di Toast** | Avatar kontak disimpan ke direktori temporary lokal dan disematkan ke berkas XML Toast via jalur `file:///` (Teruji).
+- [x] **Pengaturan Suara & Pratinjau** | Redaksi teks nama/preview dan pembungkaman suara dikelola via preferensi lokal sebelum toast dikirim (Teruji).
+- [x] **Dukungan Focus Assist / DND** | Dikelola secara otomatis dan native oleh Windows Action Center Notification Manager (Teruji).
+- [x] **Supresi Notifikasi Chat Aktif** | Pengecekan kesamaan nama pengirim dengan judul chat di `#main header`; batalkan toast jika chat sedang aktif di layar (Teruji).
+- [x] **Notifikasi Unduhan Selesai** | WinRT Toast dengan tombol aksi "Buka Berkas" (`ShellExecuteW open`) dan "Buka Folder" (`explorer.exe /select`) (Teruji).
+- [x] **Popup Panggilan Masuk (Always-on-Top)** | Jendela sekunder Tauri `call_popup` berukuran 340x160 px, frameless, melayang always-on-top di pojok kanan bawah (Teruji).
+- [x] **Tombol Aksi Panggilan Masuk** | Tombol "Terima" dan "Tolak" pada popup meneruskan IPC ke `__walite_accept_call()` / `__walite_decline_call()` dengan fallback fokus window (Teruji).
+- [x] **Suara Dering Panggilan Masuk** | Dijalankan native oleh Web Audio API WhatsApp Web di dalam WebView2; nol duplikasi dering (Teruji).
+- [ ] **Panggilan Saat App di Tray/Minimize** | Deteksi sinyal panggilan (tag notifikasi & perubahan title/favicon) otomatis memicu `call_popup.show()` (Perlu uji manual oleh pengguna dengan akun kedua).
+- [ ] **Panggilan Suara vs Video** | Penanganan izin `PermissionKind::Microphone` dan `Camera` diizinkan permanen di `on_permission_request` (Perlu uji manual oleh pengguna dengan akun kedua).
+- [ ] **Panggilan Grup** | Didukung penuh di dalam WebView2 dengan flag ABProp `enable_web_group_calling: true` (Perlu uji manual oleh pengguna dengan akun kedua).
+- [ ] **Jendela Panggilan Aktif (PiP)** | Transisi otomatis ke window compact always-on-top saat window utama diminimize saat panggilan berlangsung (Perlu uji manual oleh pengguna dengan akun kedua).
+- [ ] **Berbagi Layar (Screen Sharing)** | Izin capture layar desktop/jendela diberikan otomatis via Chromium display media API di WebView2 (Perlu uji manual oleh pengguna dengan akun kedua).
+- [ ] **Panggilan Tak Terjawab (Missed Call)** | Toast notifikasi skenario `missed-call` di Windows Action Center dengan tombol panggil balik (Perlu uji manual oleh pengguna dengan akun kedua).
+- [x] **Izin Perangkat Mikrofon & Kamera** | Handler `on_permission_request` Tauri merespons `PermissionResponse::Allow` dan diingat di profil WebView2 (Teruji).
+- [x] **Pemilihan Perangkat Audio** | Dikelola native oleh Chromium MediaDevices API di menu pengaturan panggilan bawaan WhatsApp Web (Teruji).
 
 ### Fase 4: Antarmuka UI/UX & Input/Output
 - [ ] **Pintasan Keyboard Chat** | Penanganan event keyboard native diteruskan langsung ke WebView2 (Ctrl+Alt+N, Ctrl+Alt+/, dll.).

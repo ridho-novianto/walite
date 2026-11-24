@@ -243,6 +243,12 @@
   function dispatchWaliteAction(action, params) {
     params = params || {};
     try {
+      if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+        window.__TAURI_INTERNALS__.invoke('walite_action', Object.assign({ action: action }, params));
+        return;
+      }
+    } catch (_) {}
+    try {
       const q = new URLSearchParams(params).toString();
       window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
     } catch (e) {
@@ -254,7 +260,7 @@
   window.__walite_accept_call = function () {
     try {
       const acceptBtn = document.querySelector(
-        'button[aria-label*="Jawab" i], button[aria-label*="Terima" i], button[aria-label*="Accept" i], button[aria-label*="Answer" i], [data-testid*="call-accept"], [data-testid*="call-answer"], button:has(span[data-icon="call-accept"]), button:has(span[data-icon="call"])'
+        'button[data-testid*="call-accept"], button[data-testid*="call-answer"], button:has(span[data-icon="call-accept"]), button:has(span[data-icon="call"]), button[aria-label*="Jawab" i], button[aria-label*="Terima" i], button[aria-label*="Accept" i], button[aria-label*="Answer" i]'
       );
       if (acceptBtn) {
         simulateClick(acceptBtn);
@@ -268,13 +274,15 @@
         }
       }
     } catch (_) {}
+    // Fallback: If not found, focus and bring main window to front so user can answer manually
+    dispatchWaliteAction('open-chat', { title: 'Panggilan', tag: 'call-fallback' });
     return false;
   };
 
   window.__walite_decline_call = function () {
     try {
       const declineBtn = document.querySelector(
-        'button[aria-label*="Tolak" i], button[aria-label*="Decline" i], button[aria-label*="Reject" i], button[aria-label*="Dismiss" i], [data-testid*="call-decline"], [data-testid*="call-reject"], button:has(span[data-icon="call-decline"]), button:has(span[data-icon="end-call"])'
+        'button[data-testid*="call-decline"], button[data-testid*="call-reject"], button:has(span[data-icon="call-decline"]), button:has(span[data-icon="end-call"]), button[aria-label*="Tolak" i], button[aria-label*="Decline" i], button[aria-label*="Reject" i], button[aria-label*="Dismiss" i]'
       );
       if (declineBtn) {
         simulateClick(declineBtn);
@@ -288,6 +296,8 @@
         }
       }
     } catch (_) {}
+    // Fallback: If not found, focus main window so user can decline manually
+    dispatchWaliteAction('open-chat', { title: 'Panggilan', tag: 'call-fallback' });
     return false;
   };
 
@@ -444,8 +454,12 @@
       const box = footer ? footer.querySelector('[contenteditable="true"], div[role="textbox"]') : null;
 
       if (!box) {
-        if (attempts < 25) setTimeout(tryTypeAndSend, 120);
-        else isSendingInlineReply = false;
+        if (attempts < 15) setTimeout(tryTypeAndSend, 120);
+        else {
+          isSendingInlineReply = false;
+          // Fallback: If compose box selector fails, unminimize and open chat directly so user can type
+          window.__walite_on_notif_click(title, tag);
+        }
         return;
       }
 
@@ -527,19 +541,41 @@
     let cleanBody = (body || '').trim();
     let cleanTag = (tag || cleanTitle).trim();
 
+    // Check incoming call exclusively via tag attribute (never inspect body text!)
+    const tagLower = cleanTag.toLowerCase();
+    const isCall = tagLower.includes('call') || tagLower.includes('telepon') || tagLower.includes('voip');
+    if (isCall) {
+      dispatchWaliteAction('incoming-call', { caller: cleanTitle });
+      return;
+    }
+
+    // Suppress notification if the chat is currently open and window is focused
+    try {
+      if (document.hasFocus() || !document.hidden) {
+        const mainHeader = document.querySelector('#main header');
+        if (mainHeader) {
+          const headerTitleEl = mainHeader.querySelector('span[title], [data-testid="cell-frame-title"], [dir="auto"]');
+          const activeTitle = headerTitleEl ? (headerTitleEl.getAttribute('title') || headerTitleEl.textContent || '').trim() : '';
+          if (activeTitle && cleanTitle && normalizeTitle(activeTitle) === normalizeTitle(cleanTitle)) {
+            return; // Chat is already open in focused window, suppress toast notification!
+          }
+        }
+      }
+    } catch (_) {}
+
     // Filter out read receipts, sent confirmations, typing status
     if (isIgnoredSystemMessage(cleanBody)) {
       return;
     }
 
-    // Respect ZapZap Privacy Settings
+    // Respect Privacy Settings (hide preview / hide name)
     try {
       const savedState = localStorage.getItem('wl:v1');
       if (savedState) {
         const parsed = JSON.parse(savedState);
         if (parsed) {
           if (parsed.notifShowName === false) cleanTitle = 'WhatsApp';
-          if (parsed.notifShowPreview === false) cleanBody = 'Pesan baru...';
+          if (parsed.notifShowPreview === false) cleanBody = 'Pesan baru';
         }
       }
     } catch (_) {}
@@ -733,6 +769,7 @@
 
       // VoIP / Video Call PiP Floating Window Detector
       let isCallActive = false;
+      let isIncomingCall = false;
       function checkCallStatus() {
         try {
           const callEndBtn = document.querySelector(
@@ -742,6 +779,23 @@
           if (active !== isCallActive) {
             isCallActive = active;
             dispatchWaliteAction('call-status', { active: String(active) });
+          }
+
+          // Check incoming call dialog button (never inspect chat body!)
+          const acceptBtn = document.querySelector(
+            'button[data-testid*="call-accept"], button[data-testid*="call-answer"], button:has(span[data-icon="call-accept"]), button:has(span[data-icon="call"]), button[aria-label*="Jawab" i], button[aria-label*="Terima" i], button[aria-label*="Accept" i]'
+          );
+          const incoming = !!acceptBtn;
+          if (incoming !== isIncomingCall) {
+            isIncomingCall = incoming;
+            if (incoming) {
+              let callerName = 'Kontak WhatsApp';
+              const nameEl = acceptBtn.closest('div[role="dialog"], div')?.querySelector('span[title], span[dir="auto"], h2, [data-testid*="title"]');
+              if (nameEl) callerName = (nameEl.getAttribute('title') || nameEl.textContent || '').trim() || callerName;
+              dispatchWaliteAction('incoming-call', { caller: callerName });
+            } else {
+              dispatchWaliteAction('close-call-popup', {});
+            }
           }
 
           if (isCallActive && document.hidden) {
@@ -760,7 +814,7 @@
         }
       });
 
-      setInterval(checkCallStatus, 1200);
+      setInterval(checkCallStatus, 1000);
 
       let lastDocTitle = document.title;
       setInterval(() => {
@@ -768,6 +822,17 @@
         if (curTitle !== lastDocTitle) {
           lastDocTitle = curTitle;
           updateUnreadAndBadge();
+
+          // Sinyal panggilan dari mutasi document.title (tanpa membaca chat body!)
+          const titleLower = curTitle.toLowerCase();
+          if (titleLower.includes('panggilan') || titleLower.includes('incoming call') || titleLower.includes('berdering') || titleLower.includes('ringing')) {
+            if (!isIncomingCall && !isCallActive) {
+              isIncomingCall = true;
+              dispatchWaliteAction('incoming-call', { caller: 'Kontak WhatsApp' });
+            }
+          } else if (titleLower.includes('panggilan tak terjawab') || titleLower.includes('missed call')) {
+            dispatchWaliteAction('notify', { title: 'Panggilan Tak Terjawab', body: 'Panggilan tak terjawab', tag: 'missed-call' });
+          }
         }
       }, 800);
 

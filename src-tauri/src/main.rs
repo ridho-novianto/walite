@@ -20,6 +20,7 @@ static IS_PIP_MODE: AtomicBool = AtomicBool::new(false);
 static SAVED_NORMAL_SIZE: Mutex<Option<(f64, f64)>> = Mutex::new(None);
 static SAVED_NORMAL_POS: Mutex<Option<(i32, i32)>> = Mutex::new(None);
 static IS_QUITTING: AtomicBool = AtomicBool::new(false);
+static EXPERIMENTAL_QUICK_REPLY: AtomicBool = AtomicBool::new(false);
 
 const TARGET_URL: &str = "https://web.whatsapp.com";
 const BROWSER_ARGS: &str = "--disable-features=Translate,HideCursorWhileTyping,msSmartScreenProtection \
@@ -298,13 +299,16 @@ fn show_native_message_notification(
             toast.action(Action::new("Jawab", "accept_call", ""));
             toast.action(Action::new("Tolak", "decline_call", ""));
         } else {
-            toast.input(
-                Input::new("replyBox", InputType::Text)
-                    .with_placeholder("Ketik balasan cepat...")
-            );
-            toast.action(
-                Action::new("Kirim", "reply", "").with_input_id("replyBox")
-            );
+            let allow_quick_reply = EXPERIMENTAL_QUICK_REPLY.load(Ordering::SeqCst);
+            if allow_quick_reply {
+                toast.input(
+                    Input::new("replyBox", InputType::Text)
+                        .with_placeholder("Ketik balasan cepat...")
+                );
+                toast.action(
+                    Action::new("Kirim", "reply", "").with_input_id("replyBox")
+                );
+            }
             toast.action(
                 Action::new("Buka Chat", "open", "")
             );
@@ -1080,6 +1084,56 @@ fn open_or_create_account2(app: &tauri::AppHandle) {
     }
 }
 
+fn show_or_create_call_popup(app: &tauri::AppHandle, caller: &str) {
+    if let Some(popup) = app.get_webview_window("call_popup") {
+        let _ = popup.show();
+        let _ = popup.set_always_on_top(true);
+        let _ = popup.set_focus();
+        let safe_caller = escape_js_str(caller);
+        let _ = popup.eval(&format!("if(document.getElementById('caller-name')) document.getElementById('caller-name').textContent = '{}';", safe_caller));
+        return;
+    }
+
+    let caller_enc = caller.replace('&', "%26").replace('=', "%3D").replace('?', "%3F").replace(' ', "%20");
+    let popup_url = format!("call_popup.html?caller={}", caller_enc);
+
+    let mut x = 100.0;
+    let mut y = 100.0;
+    if let Some(main_win) = app.get_webview_window("main") {
+        if let Ok(Some(mon)) = main_win.current_monitor() {
+            let mon_size = mon.size();
+            let scale = mon.scale_factor();
+            let pop_w = 340.0 * scale;
+            let pop_h = 160.0 * scale;
+            x = (mon_size.width as f64 - pop_w - 24.0 * scale) / scale;
+            y = (mon_size.height as f64 - pop_h - 60.0 * scale) / scale;
+        }
+    }
+
+    let app_nav = app.clone();
+    let builder = WebviewWindowBuilder::new(app, "call_popup", WebviewUrl::App(popup_url.into()))
+        .title("Panggilan Masuk")
+        .inner_size(340.0, 160.0)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .transparent(true)
+        .position(x, y)
+        .on_navigation(move |url| {
+            if url.scheme() == "walite-action" {
+                handle_walite_action(&app_nav, url);
+                return false;
+            }
+            true
+        });
+
+    if let Ok(win) = builder.build() {
+        let _ = win.show();
+        let _ = win.set_always_on_top(true);
+    }
+}
+
 fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
     if url.scheme() != "walite-action" {
         return false;
@@ -1199,25 +1253,62 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                 restore_from_pip_mode(&main_win);
             }
         }
+        "incoming-call" => {
+            let caller = params.get("caller").cloned().unwrap_or_else(|| "Kontak WhatsApp".to_string());
+            show_or_create_call_popup(app, &caller);
+        }
+        "close-call-popup" => {
+            if let Some(popup) = app.get_webview_window("call_popup") {
+                let _ = popup.destroy();
+            }
+        }
         "call-status" => {
             let active = params.get("active").map(|s| s == "true").unwrap_or(false);
             IS_CALL_ACTIVE.store(active, Ordering::SeqCst);
-            if !active && IS_PIP_MODE.load(Ordering::SeqCst) {
-                if let Some(main_win) = app.get_webview_window("main") {
-                    restore_from_pip_mode(&main_win);
+            if !active {
+                if let Some(popup) = app.get_webview_window("call_popup") {
+                    let _ = popup.destroy();
+                }
+                if IS_PIP_MODE.load(Ordering::SeqCst) {
+                    if let Some(main_win) = app.get_webview_window("main") {
+                        restore_from_pip_mode(&main_win);
+                    }
                 }
             }
         }
         "accept-call" => {
+            if let Some(popup) = app.get_webview_window("call_popup") {
+                let _ = popup.destroy();
+            }
             if let Some(main_win) = app.get_webview_window("main") {
                 let _ = main_win.show();
                 let _ = main_win.unminimize();
                 let _ = main_win.set_focus();
+
+                #[cfg(target_os = "windows")]
+                if let Ok(hwnd) = main_win.hwnd() {
+                    unsafe {
+                        #[link(name = "user32")]
+                        extern "system" {
+                            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+                            fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+                            fn BringWindowToTop(hWnd: *mut std::ffi::c_void) -> i32;
+                        }
+                        const SW_RESTORE: i32 = 9;
+                        ShowWindow(hwnd.0, SW_RESTORE);
+                        BringWindowToTop(hwnd.0);
+                        SetForegroundWindow(hwnd.0);
+                    }
+                }
+
                 let js = "if (window.__walite_accept_call) window.__walite_accept_call();";
                 let _ = main_win.eval(js);
             }
         }
         "decline-call" => {
+            if let Some(popup) = app.get_webview_window("call_popup") {
+                let _ = popup.destroy();
+            }
             if let Some(main_win) = app.get_webview_window("main") {
                 let js = "if (window.__walite_decline_call) window.__walite_decline_call();";
                 let _ = main_win.eval(js);
@@ -1226,8 +1317,7 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
         "quit" => {
             IS_QUITTING.store(true, Ordering::SeqCst);
             for (_, window) in app.webview_windows() {
-                let _ = window.hide();
-                let _ = window.close();
+                let _ = window.destroy();
             }
             app.exit(0);
         }
@@ -1271,6 +1361,9 @@ fn handle_walite_action(app: &tauri::AppHandle, url: &Url) -> bool {
                         "autoStart" => {
                             set_run_on_startup(bool_val);
                         }
+                        "experimentalQuickReply" => {
+                            EXPERIMENTAL_QUICK_REPLY.store(bool_val, Ordering::SeqCst);
+                        }
                         _ => {}
                     }
                 }
@@ -1293,6 +1386,7 @@ fn walite_action(
     path: Option<String>,
     key: Option<String>,
     val: Option<String>,
+    caller: Option<String>,
 ) {
     let mut params = std::collections::HashMap::new();
     if let Some(t) = title { params.insert("title".to_string(), t); }
@@ -1303,6 +1397,7 @@ fn walite_action(
     if let Some(p) = path { params.insert("path".to_string(), p); }
     if let Some(k) = key { params.insert("key".to_string(), k); }
     if let Some(v) = val { params.insert("val".to_string(), v); }
+    if let Some(c) = caller { params.insert("caller".to_string(), c); }
 
     let mut query = String::new();
     for (k, v) in &params {
@@ -1600,6 +1695,16 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![walite_action, read_pdf_file])
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            for arg in &argv {
+                if arg == "--quit" {
+                    IS_QUITTING.store(true, Ordering::SeqCst);
+                    for (_, window) in app.webview_windows() {
+                        let _ = window.destroy();
+                    }
+                    app.exit(0);
+                    return;
+                }
+            }
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.unminimize();
@@ -1724,6 +1829,7 @@ fn main() {
                     }
                     let url_str = url.as_str();
                     let allowed = is_allowed_internal_url(&url);
+                    #[cfg(debug_assertions)]
                     if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
                         let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
                         if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
@@ -1746,6 +1852,7 @@ fn main() {
             builder = builder.on_new_window(move |url, _features| {
                 let url_str = url.as_str();
                 let allowed = is_allowed_internal_url(&url);
+                #[cfg(debug_assertions)]
                 if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
                     let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
                     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
@@ -1773,6 +1880,7 @@ fn main() {
             builder = builder.on_download(move |webview, event| {
                 match event {
                     DownloadEvent::Requested { url, destination } => {
+                        #[cfg(debug_assertions)]
                         if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
                             let log_file = std::path::PathBuf::from(appdata).join("Walite").join("dom_debug.log");
                             if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log_file) {
@@ -2068,8 +2176,7 @@ fn main() {
                     "quit" => {
                         IS_QUITTING.store(true, Ordering::SeqCst);
                         for (_, window) in app.webview_windows() {
-                            let _ = window.hide();
-                            let _ = window.close();
+                            let _ = window.destroy();
                         }
                         app.exit(0);
                     }
@@ -2101,9 +2208,11 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if !IS_QUITTING.load(Ordering::SeqCst) {
-                    api.prevent_close();
-                    let _ = window.hide();
+                if window.label() == "main" {
+                    if !IS_QUITTING.load(Ordering::SeqCst) {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
                 }
             }
         })

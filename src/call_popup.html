@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panggilan Masuk - WaLite</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+    .call-card {
+      width: 100%;
+      height: 100%;
+      background: rgba(32, 44, 51, 0.96);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(0, 168, 132, 0.4);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 168, 132, 0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 16px;
+      color: #ffffff;
+      animation: popupSlideIn 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+    @keyframes popupSlideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .call-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 18px;
+    }
+    .call-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #00a884;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .call-body {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 8px 0;
+    }
+    .call-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(0, 168, 132, 0.2);
+      border: 2px solid #00a884;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      animation: pulseRinging 1.5s infinite;
+    }
+    @keyframes pulseRinging {
+      0% { box-shadow: 0 0 0 0 rgba(0, 168, 132, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 168, 132, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 168, 132, 0); }
+    }
+    .call-avatar svg {
+      width: 24px;
+      height: 24px;
+      fill: #00a884;
+    }
+    .call-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .caller-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #f0f2f5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .call-status {
+      font-size: 12px;
+      color: #00a884;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .call-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .btn-action {
+      flex: 1;
+      height: 34px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-decline {
+      background: #ea4335;
+      color: #ffffff;
+    }
+    .btn-decline:hover {
+      background: #d93025;
+      transform: scale(1.02);
+    }
+    .btn-accept {
+      background: #00a884;
+      color: #111b21;
+    }
+    .btn-accept:hover {
+      background: #02906f;
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+<body>
+  <div class="call-card">
+    <div class="call-header">
+      <div class="call-brand">
+        <svg style="width:13px;height:13px;fill:currentColor" viewBox="0 0 24 24">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Panggilan Masuk</span>
+      </div>
+      <button id="btn-close-popup" style="background:none; border:none; color:#8696a0; font-size:18px; line-height:1; cursor:pointer;" title="Tutup">&times;</button>
+    </div>
+    <div class="call-body">
+      <div class="call-avatar">
+        <svg viewBox="0 0 24 24">
+          <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.057 15.057 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1.01A11.36 11.36 0 018.5 3.92c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.54c0-.55-.45-1-1-1z"/>
+        </svg>
+      </div>
+      <div class="call-info">
+        <div class="caller-name" id="caller-name">Kontak WhatsApp</div>
+        <div class="call-status" id="call-status">Berdering...</div>
+      </div>
+    </div>
+    <div class="call-actions">
+      <button class="btn-action btn-decline" id="btn-decline" title="Tolak Panggilan">
+        <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+          <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 010-1.41C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.39.39.39 1.02 0 1.41l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+        </svg>
+        <span>Tolak</span>
+      </button>
+      <button class="btn-action btn-accept" id="btn-accept" title="Jawab Panggilan">
+        <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+          <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.057 15.057 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1.01A11.36 11.36 0 018.5 3.92c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.54c0-.55-.45-1-1-1z"/>
+        </svg>
+        <span>Jawab</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const caller = params.get('caller');
+      if (caller && caller.trim()) {
+        document.getElementById('caller-name').textContent = caller.trim();
+      }
+
+      function sendAction(action) {
+        if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+          window.__TAURI_INTERNALS__.invoke('walite_action', { action: action });
+          return;
+        }
+        window.location.href = 'walite-action://' + action;
+      }
+
+      document.getElementById('btn-accept').addEventListener('click', () => sendAction('accept-call'));
+      document.getElementById('btn-decline').addEventListener('click', () => sendAction('decline-call'));
+      const closeBtn = document.getElementById('btn-close-popup');
+      if (closeBtn) closeBtn.addEventListener('click', () => sendAction('close-call-popup'));
+
+      // Auto close if unanswered after 45 seconds to prevent hanging popup
+      setTimeout(() => {
+        sendAction('close-call-popup');
+      }, 45000);
+    })();
+  </script>
+</body>
+</html>

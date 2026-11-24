@@ -1535,6 +1535,7 @@
             ${createSettingRow('Pratinjau Pesan', 'Tampilkan isi pesan teks di kartu notifikasi', createSwitchHtml('sw-notifMsg', state.notifShowPreview !== false))}
             ${createSettingRow('Suara Notifikasi', 'Bunyikan nada dering saat pesan masuk diterima', createSwitchHtml('sw-notifSound', state.notifSound !== false))}
             ${createSettingRow('Mode Hening / DND', 'Heningkan suara saat Windows Jangan Ganggu aktif', createSwitchHtml('sw-respectDnd', state.respectDnd !== false))}
+            ${createSettingRow('Balas Cepat Notifikasi (Eksperimental)', 'Mati secara default. Dapat berhenti bekerja jika tampilan WhatsApp Web berubah (fallback: otomatis buka obrolan)', createSwitchHtml('sw-expQuickReply', state.experimentalQuickReply === true))}
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid rgba(134,150,160,0.12);">
               <span style="font-size:12px; color:#8696a0;">Uji coba tampilan notifikasi di Windows Anda</span>
               <button id="btn-test-notif" style="background:#00a884; border:none; color:#111b21; padding:7px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">🔔 Tes Notifikasi Sekarang</button>
@@ -1585,6 +1586,15 @@
           window.__waliteAudioMuted = !e.target.checked;
         };
         bodyArea.querySelector('#sw-respectDnd').onchange = (e) => syncField('respectDnd', e.target.checked, e.target);
+        const expQuickReplySw = bodyArea.querySelector('#sw-expQuickReply');
+        if (expQuickReplySw) {
+          expQuickReplySw.onchange = (e) => {
+            syncField('experimentalQuickReply', e.target.checked, e.target);
+            if (typeof window.dispatchWaliteAction === 'function') {
+              window.dispatchWaliteAction('set-setting', { key: 'experimentalQuickReply', val: String(e.target.checked) });
+            }
+          };
+        }
         bodyArea.querySelector('#sw-saveAs').onchange = (e) => {
           syncField('saveAs', e.target.checked, e.target);
           if (typeof window.dispatchWaliteAction === 'function') {

@@ -28,7 +28,7 @@
     version: 2, overall: false, blurNames: true, blurAvatars: true, blurLastMsg: true,
     blurMessages: true, blurMedia: true, blurInput: false, autoLock: false, autoLockMinutes: 10,
     showShieldBtn: true, hasPassword: false, passwordHash: null, passwordSalt: null,
-    saveAs: true, downloadNotif: true, autoStart: false, customCSS: '', customJS: '', customCSSEnabled: false, customJSEnabled: false,
+    saveAs: true, downloadNotif: true, autoStart: false, experimentalQuickReply: false, customCSS: '', customJS: '', customCSSEnabled: false, customJSEnabled: false,
     notifShowName: true, notifShowPreview: true, notifShowPhoto: true, notifSound: true, respectDnd: true
   };
 
@@ -975,6 +975,7 @@ input:checked+.wl-slider:before{transform:translateX(18px);}
           window.dispatchWaliteAction('set-setting', { key: 'saveAs', val: String(state.saveAs !== false) });
           window.dispatchWaliteAction('set-setting', { key: 'downloadNotif', val: String(state.downloadNotif !== false) });
           window.dispatchWaliteAction('set-setting', { key: 'autoStart', val: String(state.autoStart === true) });
+          window.dispatchWaliteAction('set-setting', { key: 'experimentalQuickReply', val: String(state.experimentalQuickReply === true) });
         }
       } catch (_) {}
     }, 500);
