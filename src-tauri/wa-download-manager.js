@@ -243,12 +243,6 @@
   function dispatchWaliteAction(action, params) {
     params = params || {};
     try {
-      if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
-        window.__TAURI_INTERNALS__.invoke('walite_action', Object.assign({ action: action }, params));
-        return;
-      }
-    } catch (_) {}
-    try {
       const q = new URLSearchParams(params).toString();
       window.location.href = 'walite-action://' + action + (q ? ('?' + q) : '');
     } catch (e) {
@@ -885,23 +879,25 @@
     } else {
       document.addEventListener('DOMContentLoaded', injectCursorStyle);
     }
-    document.addEventListener('DOMContentLoaded', injectCursorStyle);
-    const cursorObs = new MutationObserver(() => {
-      if (!document.getElementById('wl-cursor-enhancer')) injectCursorStyle();
-    });
-    if (document.documentElement) {
-      cursorObs.observe(document.documentElement, { childList: true, subtree: true });
-    }
   })();
 
   // Native Test Notification integration into WhatsApp Web Settings -> Notifications
   (function initWhatsAppSettingsTestButton() {
     function injectTestRow() {
+      // Fast check: only run search if user is actively in settings
+      const settingsDrawer = document.querySelector('[data-testid="settings-screen"], [data-testid="drawer-left"]');
+      if (!settingsDrawer) {
+        const existing = document.getElementById('walite-settings-test-card');
+        if (existing) existing.remove();
+        return;
+      }
+
       const existing = document.getElementById('walite-settings-test-card');
+      if (existing) return;
 
       // Check if user is currently looking at Settings -> Notifikasi
       let targetRow = null;
-      const elements = document.querySelectorAll('span, div');
+      const elements = settingsDrawer.querySelectorAll('span, div');
       for (const el of elements) {
         const t = (el.textContent || '').trim();
         if (t === 'Pesan' || t === 'Messages') {
@@ -997,11 +993,7 @@
       container.insertBefore(card, targetRow);
     }
 
-    const obs = new MutationObserver(injectTestRow);
-    if (document.body) {
-      obs.observe(document.body, { childList: true, subtree: true });
-    }
-    setInterval(injectTestRow, 600);
+    setInterval(injectTestRow, 3000);
   })();
 
   // Safely Remove Desktop Upsell Banner across WhatsApp Web without freezing the UI thread

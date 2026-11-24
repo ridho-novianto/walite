@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panggilan Masuk - WaLite</title>
+  <title>Panggilan Masuk</title>
   <style>
     * {
       box-sizing: border-box;
@@ -191,10 +191,6 @@
       }
 
       function sendAction(action) {
-        if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
-          window.__TAURI_INTERNALS__.invoke('walite_action', { action: action });
-          return;
-        }
         window.location.href = 'walite-action://' + action;
       }
 

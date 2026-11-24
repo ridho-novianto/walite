@@ -31,3 +31,7 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# REA & analysis results
+rea-results/
+
+

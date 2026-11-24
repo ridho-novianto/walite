@@ -4,22 +4,6 @@
   if (window.__WALITE_INITIALIZED__) return;
   window.__WALITE_INITIALIZED__ = true;
 
-  // PDF handling is managed directly by WaLite in-app Mozilla PDF.js engine
-  try {
-    Object.defineProperty(navigator, 'pdfViewerEnabled', {
-      get: () => false,
-      configurable: true,
-      enumerable: true
-    });
-    if (typeof Navigator !== 'undefined' && Navigator.prototype) {
-      Object.defineProperty(Navigator.prototype, 'pdfViewerEnabled', {
-        get: () => false,
-        configurable: true,
-        enumerable: true
-      });
-    }
-  } catch (_) {}
-
   const STORAGE_KEY = 'wl:v1';
   const TEAL = '#00a884';
   const GRAY = '#374248';
@@ -28,7 +12,7 @@
     version: 2, overall: false, blurNames: true, blurAvatars: true, blurLastMsg: true,
     blurMessages: true, blurMedia: true, blurInput: false, autoLock: false, autoLockMinutes: 10,
     showShieldBtn: true, hasPassword: false, passwordHash: null, passwordSalt: null,
-    saveAs: true, downloadNotif: true, autoStart: false, experimentalQuickReply: false, customCSS: '', customJS: '', customCSSEnabled: false, customJSEnabled: false,
+    saveAs: true, downloadNotif: true, autoStart: false, experimentalQuickReply: false, reducedMotion: true, customCSS: '', customJS: '', customCSSEnabled: false, customJSEnabled: false,
     notifShowName: true, notifShowPreview: true, notifShowPhoto: true, notifSound: true, respectDnd: true
   };
 
@@ -72,13 +56,22 @@
   function b64ToU8(b64) { return Uint8Array.from(window.atob(b64), (c) => c.charCodeAt(0)); }
 
   const CSS_RULES = `
-/* Mouse pointer on chat list items */
-#pane-side :is(div[role="row"], [role="listitem"]) { cursor: pointer; }
+/* Mouse pointer and layout containment on chat list items */
+#pane-side :is(div[role="row"], [role="listitem"]) { cursor: pointer; contain: content; }
+
+/* Reduced Motion (Kurangi Animasi) */
+html.wl-reduced-motion *, html.wl-reduced-motion *::before, html.wl-reduced-motion *::after {
+  transition: none !important;
+  animation-duration: 0.001ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation-duration: 0.001ms !important; }
+}
 
 /* 1. Contact & Group Names (blurNames) */
-html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid="cell-frame-title"], [data-testid="cell-frame-title"] *, span[title][dir="auto"], header span[dir="auto"], span[title]._ak8q, span[title]._ak8j) { filter: blur(8px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid="cell-frame-title"], [data-testid="cell-frame-title"] *, span[title][dir="auto"], header span[dir="auto"], span[title]._ak8q, span[title]._ak8j) { filter: blur(8px) !important; }
 html.wl-overall-active.wl-blur-names #pane-side :is(div[role="row"], [role="listitem"]):hover :is([data-testid="cell-frame-title"], [data-testid="cell-frame-title"] *, span[title], header span[dir="auto"]) { filter: none !important; }
-html.wl-overall-active.wl-blur-names #main header :is(span[title], [dir="auto"], [data-testid="conversation-info-header-chat-title"]) { filter: blur(8px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-names #main header :is(span[title], [dir="auto"], [data-testid="conversation-info-header-chat-title"]) { filter: blur(8px) !important; }
 html.wl-overall-active.wl-blur-names #main header:hover :is(span[title], [dir="auto"], [data-testid="conversation-info-header-chat-title"]) { filter: none !important; }
 
 /* 2. Profile Pictures (blurAvatars) */
@@ -99,7 +92,7 @@ html.wl-overall-active.wl-blur-avatars #pane-side :is(div[role="row"], [role="li
   div[style*="border-radius"] :is(img, svg, canvas),
   ._ak8h,
   ._ak8h *
-):not([data-testid="cell-frame-title"] *):not(span[title] *):not([data-testid*="last-msg"] *):not([data-icon*="check"] *):not([data-icon*="pinned"] *):not([data-icon*="muted"] *):not([data-icon*="status"] *):not([data-icon*="down"] *):not([data-icon*="menu"] *):not([data-icon*="sticker"] *):not([data-icon*="audio"] *) { filter: blur(9px) !important; transition: filter .15s ease; }
+):not([data-testid="cell-frame-title"] *):not(span[title] *):not([data-testid*="last-msg"] *):not([data-icon*="check"] *):not([data-icon*="pinned"] *):not([data-icon*="muted"] *):not([data-icon*="status"] *):not([data-icon*="down"] *):not([data-icon*="menu"] *):not([data-icon*="sticker"] *):not([data-icon*="audio"] *) { filter: blur(9px) !important; }
 html.wl-overall-active.wl-blur-avatars #pane-side :is(div[role="row"], [role="listitem"]):hover :is(
   img:not([data-plain-text], .emoji, [alt*="emoji"], [data-testid*="emoji"]),
   canvas,
@@ -135,7 +128,7 @@ html.wl-overall-active.wl-blur-avatars #main header :is(
   div[style*="border-radius"] :is(img, svg, canvas),
   ._ak8h,
   ._ak8h *
-):not([data-testid="cell-frame-title"] *):not(span[title] *):not([dir="auto"] *):not([data-icon*="down"] *):not([data-icon*="menu"] *) { filter: blur(9px) !important; transition: filter .15s ease; }
+):not([data-testid="cell-frame-title"] *):not(span[title] *):not([dir="auto"] *):not([data-icon*="down"] *):not([data-icon*="menu"] *) { filter: blur(9px) !important; }
 html.wl-overall-active.wl-blur-avatars #main header:hover :is(
   img:not([data-plain-text], .emoji, [alt*="emoji"], [data-testid*="emoji"]),
   canvas,
@@ -165,7 +158,7 @@ html.wl-overall-active.wl-blur-avatars #main div[role="row"] :is(
   [data-icon*="avatar"],
   ._ak8h,
   ._ak8h *
-):not([data-testid*="msg-container"] *):not([data-icon*="check"] *):not([data-icon*="status"] *):not([data-icon*="audio"] *):not([data-icon*="mic"] *) { filter: blur(9px) !important; transition: filter .15s ease; }
+):not([data-testid*="msg-container"] *):not([data-icon*="check"] *):not([data-icon*="status"] *):not([data-icon*="audio"] *):not([data-icon*="mic"] *) { filter: blur(9px) !important; }
 html.wl-overall-active.wl-blur-avatars #main div[role="row"]:hover :is(
   img:not([data-plain-text], .emoji, [alt*="emoji"], [data-testid*="emoji"]),
   canvas,
@@ -180,27 +173,26 @@ html.wl-overall-active.wl-blur-avatars #main div[role="row"]:hover :is(
 ):not([data-testid*="msg-container"] *):not([data-icon*="check"] *):not([data-icon*="status"] *):not([data-icon*="audio"] *):not([data-icon*="mic"] *) { filter: none !important; }
 
 /* 3. Last Messages Preview in Pane-side (blurLastMsg) */
-html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid*="last-msg"], [data-testid*="last-msg"] *, [data-testid="cell-frame-secondary"], [data-testid="cell-frame-secondary"] *, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *), ._ak8k) { filter: blur(6px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]) :is([data-testid*="last-msg"], [data-testid*="last-msg"] *, [data-testid="cell-frame-secondary"], [data-testid="cell-frame-secondary"] *, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *), ._ak8k) { filter: blur(6px) !important; }
 html.wl-overall-active.wl-blur-lastmsg #pane-side :is(div[role="row"], [role="listitem"]):hover :is([data-testid*="last-msg"], [data-testid*="last-msg"] *, [data-testid="cell-frame-secondary"], [data-testid="cell-frame-secondary"] *, span[dir="ltr"]:not([title]):not([data-testid="cell-frame-title"] *):not(header *), ._ak8k) { filter: none !important; }
 
 /* 4. All Messages in Active Chat Room (blurMessages) */
-html.wl-overall-active.wl-blur-messages #main :is(.message-in, .message-out, div[data-testid*="msg-container"]) { filter: blur(8px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-messages #main :is(.message-in, .message-out, div[data-testid*="msg-container"]) { filter: blur(8px) !important; }
 html.wl-overall-active.wl-blur-messages #main div[role="row"]:hover :is(.message-in, .message-out, div[data-testid*="msg-container"]),
 html.wl-overall-active.wl-blur-messages #main :is(.message-in, .message-out, div[data-testid*="msg-container"]):hover { filter: none !important; }
 
 /* 5. Media Preview in #main (blurMedia) */
-html.wl-overall-active.wl-blur-media #main div[role="row"] :is([data-testid*="media"], [data-testid*="audio"], [data-testid*="video"], [data-testid*="sticker"], [data-testid*="document"], [data-testid*="doc"], [data-testid*="file"], [data-testid*="attachment"], div:has(> span[data-icon*="document"]), div:has(> span[data-icon*="attach"]), div:has(> span[data-icon*="audio-file"]), img:not([alt*="emoji"],[data-plain-text],.emoji,[data-testid*="emoji"]), video, canvas) { filter: blur(12px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-media #main div[role="row"] :is([data-testid*="media"], [data-testid*="audio"], [data-testid*="video"], [data-testid*="sticker"], [data-testid*="document"], [data-testid*="doc"], [data-testid*="file"], [data-testid*="attachment"], div:has(> span[data-icon*="document"]), div:has(> span[data-icon*="attach"]), div:has(> span[data-icon*="audio-file"]), img:not([alt*="emoji"],[data-plain-text],.emoji,[data-testid*="emoji"]), video, canvas) { filter: blur(12px) !important; }
 html.wl-overall-active.wl-blur-media #main div[role="row"]:hover :is([data-testid*="media"], [data-testid*="audio"], [data-testid*="video"], [data-testid*="sticker"], [data-testid*="document"], [data-testid*="doc"], [data-testid*="file"], [data-testid*="attachment"], img, video, canvas),
 html.wl-overall-active.wl-blur-media #main :is([data-testid*="media"], [data-testid*="audio"], [data-testid*="video"], [data-testid*="sticker"], [data-testid*="document"], [data-testid*="doc"], [data-testid*="file"], [data-testid*="attachment"], img, video, canvas):hover { filter: none !important; }
 
 /* 6. Compose Input in Footer (blurInput) */
 html.wl-overall-active:not(.wl-blur-input) #main footer, html.wl-overall-active:not(.wl-blur-input) #main footer * { filter: none !important; }
-html.wl-overall-active.wl-blur-input #main footer :is([contenteditable="true"], [data-testid*="compose"], div[role="textbox"]) { filter: blur(7px) !important; transition: filter .15s ease; }
+html.wl-overall-active.wl-blur-input #main footer :is([contenteditable="true"], [data-testid*="compose"], div[role="textbox"]) { filter: blur(7px) !important; }
 html.wl-overall-active.wl-blur-input #main footer:is(:hover, :focus-within) :is([contenteditable="true"], [data-testid*="compose"], div[role="textbox"]) { filter: none !important; }
 
 /* Safety & Cleanup */
 :is([data-testid*="panel-emoji"],[data-testid*="emoji-panel"],[data-testid*="picker"]),:is([data-testid*="panel-emoji"],[data-testid*="emoji-panel"],[data-testid*="picker"]) *{filter:none!important;}
-html.wl-overall-active :is(video,canvas,[data-testid*="sticker"],[data-testid*="media"],[data-testid*="document"]){will-change:filter;transform:translateZ(0);}
 #pane-side [data-testid*="upsell"],#pane-side [data-testid*="banner"]{display:none!important;height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;pointer-events:none!important;}
 .wl-shield-btn{position:fixed;bottom:22px;right:22px;width:42px;height:42px;border-radius:50%;background:${TEAL};box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer;z-index:99998;display:flex;align-items:center;justify-content:center;user-select:none;transition:transform .15s,opacity .2s;}.wl-shield-btn:hover{transform:scale(1.08);}.wl-shield-btn.wl-hidden{display:none!important;opacity:0!important;pointer-events:none!important;}.wl-shield-btn svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2.2;}
 .wl-panel{position:fixed;bottom:74px;right:22px;width:320px;background:rgba(32,44,51,.96);backdrop-filter:blur(16px);color:#e9edef;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.5);font-family:inherit;font-size:13px;z-index:99998;display:none;flex-direction:column;border:1px solid rgba(134,150,160,.18);}
@@ -305,6 +297,7 @@ input:checked+.wl-slider:before{transform:translateX(18px);}
 
     const h = document.documentElement;
     h.classList.toggle('wl-overall-active', !!state.overall);
+    h.classList.toggle('wl-reduced-motion', state.reducedMotion !== false);
     [
       ['wl-blur-names', state.blurNames],
       ['wl-blur-avatars', state.blurAvatars],
@@ -668,6 +661,13 @@ input:checked+.wl-slider:before{transform:translateX(18px);}
     shieldToggleInput = shieldToggle.input;
     body.appendChild(createRow('Tombol Mengambang', 'Tampilkan ikon shield (Alt+H)', shieldToggle.container));
 
+    const motionToggle = createSwitch(state.reducedMotion !== false, (val) => {
+      state.reducedMotion = val;
+      updateHtmlClasses();
+      saveState();
+    });
+    body.appendChild(createRow('Kurangi Animasi', 'Matikan transisi berat agar scroll responsif', motionToggle.container));
+
     function sendDownloadSetting(key, val) {
       if (typeof window.dispatchWaliteAction === 'function') {
         window.dispatchWaliteAction('set-setting', { key: key, val: String(val) });
@@ -980,12 +980,18 @@ input:checked+.wl-slider:before{transform:translateX(18px);}
       } catch (_) {}
     }, 500);
 
+    let checkQueued = false;
     const observer = new MutationObserver(() => {
-      if (!document.getElementById('walite-privacy-css')) applyStyles();
-      if (!document.getElementById('wl-root-container')) buildUI();
+      if (checkQueued) return;
+      checkQueued = true;
+      requestAnimationFrame(() => {
+        checkQueued = false;
+        if (!document.getElementById('walite-privacy-css')) applyStyles();
+        if (!document.getElementById('wl-root-container')) buildUI();
+      });
     });
-    if (document.documentElement) {
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+    if (document.body) {
+      observer.observe(document.body, { childList: true });
     }
   }
 

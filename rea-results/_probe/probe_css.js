@@ -192,26 +192,22 @@
     );
   }
 
-  // Media devices count check
-  if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-    navigator.mediaDevices.enumerateDevices().then(devices => {
-      devices.forEach(d => {
-        if (d.kind === 'audioinput') callingFeatures.audioInputDevices++;
-        if (d.kind === 'audiooutput') callingFeatures.audioOutputDevices++;
-        if (d.kind === 'videoinput') callingFeatures.videoInputDevices++;
-      });
-      sendResults();
-    }).catch(() => {
-      sendResults();
-    });
-  } else {
-    sendResults();
-  }
+  sendResults();
 
   function sendResults() {
+    const pdfDiagnostics = {
+      pdfViewerEnabled: navigator.pdfViewerEnabled,
+      pluginsLength: navigator.plugins ? navigator.plugins.length : 0,
+      pluginsList: navigator.plugins ? Array.from(navigator.plugins).map(p => p.name) : [],
+      hasPdfModal: !!document.getElementById('walite-pdf-modal'),
+      hasPdfJsLib: typeof window.pdfjsLib !== 'undefined',
+      hasRescueViewer: typeof rescuePdfViewer !== 'undefined',
+      reducedMotionActive: document.documentElement.classList.contains('wl-reduced-motion')
+    };
     const payload = {
       computedStyles: components,
-      calling: callingFeatures
+      calling: callingFeatures,
+      pdfDiagnostics: pdfDiagnostics
     };
     const jsonStr = JSON.stringify(payload);
     // Send to dom_debug.log in chunks or full base64
